@@ -39,7 +39,7 @@ sha256sum "$JSON_FILE" | cut -d' ' -f1 > "$SHA_FILE"
 echo "   Hash:  $(cat "$SHA_FILE")"
 
 echo "=> Compressing with bzip2 (max)..."
-BZIP2=-9 bzip2 -k "$JSON_FILE"
+BZIP2=-9 bzip2 -f -k "$JSON_FILE"
 COMP_SIZE=$(wc -c < "$BZ_FILE")
 PCT_SAVED=$(( (RAW_SIZE - COMP_SIZE) * 100 / RAW_SIZE ))
 echo "   ${RAW_SIZE} -> ${COMP_SIZE} bytes (${PCT_SAVED}% saved)"
