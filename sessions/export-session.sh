@@ -15,8 +15,8 @@ if [ -z "$TITLE_SLUG" ] || [ -z "$SESSION_ID" ]; then
   echo "  <session-id>   opencode session ID (e.g. ses_1e8288...)"
   echo ""
   echo "Produces:"
-  echo "  sessions/<title-slug>-<session-id-noprefix>.json   full opencode export"
-  echo "  sessions/<title-slug>-<session-id-noprefix>.sha256  content hash"
+  echo "  sessions/<title-slug>-<session-id-noprefix>.json.bz2   compressed session archive"
+  echo "  sessions/<title-slug>-<session-id-noprefix>.sha256     content hash (of uncompressed JSON)"
   echo ""
   echo "Example:"
   echo "  sessions/export-session.sh 2026-05-11-my-session ses_abc123"
@@ -24,15 +24,25 @@ if [ -z "$TITLE_SLUG" ] || [ -z "$SESSION_ID" ]; then
 fi
 
 SESSION_ID_NO_PREFIX="${SESSION_ID#ses_}"
-JSON_FILE="${SESSIONS_DIR}/${TITLE_SLUG}-${SESSION_ID_NO_PREFIX}.json"
-SHA_FILE="${SESSIONS_DIR}/${TITLE_SLUG}-${SESSION_ID_NO_PREFIX}.sha256"
+BASE_FILE="${SESSIONS_DIR}/${TITLE_SLUG}-${SESSION_ID_NO_PREFIX}"
+JSON_FILE="${BASE_FILE}.json"
+BZ_FILE="${BASE_FILE}.json.bz2"
+SHA_FILE="${BASE_FILE}.sha256"
 
 echo "=> Exporting session ${SESSION_ID}..."
 opencode export "$SESSION_ID" 2>/dev/null > "$JSON_FILE"
-echo "   Saved: ${JSON_FILE}"
+RAW_SIZE=$(wc -c < "$JSON_FILE")
+echo "   Saved: ${JSON_FILE} (${RAW_SIZE} bytes)"
 
 echo "=> Computing content hash..."
 sha256sum "$JSON_FILE" | cut -d' ' -f1 > "$SHA_FILE"
 echo "   Hash:  $(cat "$SHA_FILE")"
 
-wc -c < "$JSON_FILE" | xargs -I{} echo "=> Done ({} bytes)"
+echo "=> Compressing with bzip2 (max)..."
+BZIP2=-9 bzip2 -k "$JSON_FILE"
+COMP_SIZE=$(wc -c < "$BZ_FILE")
+PCT_SAVED=$(( (RAW_SIZE - COMP_SIZE) * 100 / RAW_SIZE ))
+echo "   ${RAW_SIZE} -> ${COMP_SIZE} bytes (${PCT_SAVED}% saved)"
+
+rm "$JSON_FILE"
+echo "=> Done"

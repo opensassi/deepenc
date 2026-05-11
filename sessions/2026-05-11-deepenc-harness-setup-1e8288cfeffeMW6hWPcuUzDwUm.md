@@ -2,8 +2,8 @@
 
 **Date:** 2026-05-11
 **Session ID:** ses_1e8288cfeffeMW6hWPcuUzDwUm
-**Full export:** `2026-05-11-deepenc-harness-setup-1e8288cfeffeMW6hWPcuUzDwUm.json`
-**Content hash:** `5d34c0f9340e789d2eaa2cbbdac3a54651c1db62e5ff5ba8c5d22e6b5c6eac71`
+**Full export:** `2026-05-11-deepenc-harness-setup-1e8288cfeffeMW6hWPcuUzDwUm.json.bz2` (bzip2, ~88% compression)
+**Content hash:** `5d03936f975e68f40baa7aa09bce4b81751f8a417470b56286f87ec44b707a45`
 
 ---
 
