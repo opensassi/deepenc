@@ -19,3 +19,6 @@ node_modules/
 .artifacts/
 src/**/.artifacts/
 .playwright-mcp/
+test/data/park_joy_*.yuv
+.profiler/
+*.y4m
