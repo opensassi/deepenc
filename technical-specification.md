@@ -10,16 +10,128 @@ deepenc is a fork of [VVenC](https://github.com/fraunhoferhhi/vvenc) (Fraunhofer
 
 This specification covers the deepenc source fork only. The harness tooling (trace generation, optimization agent, test pyramid, etc.) is specified in `deepenc-harness/technical-specification.md`.
 
-## Planned Modifications
+## Module Reference
 
-- Instrumentation hooks for hot function tracing
-- Side-channel decision log emission for metadata collection
-- CMake build system integration points
-- Compatibility APIs for the harness tooling
+| Module | Directory | Facade Class | Aggregate Spec | Internal Spec Files |
+|---|---|---|---|---|
+| CommonLib | `source/Lib/CommonLib/` | — | `CommonLib.spec.md` | 38 files (BitStream through InitX86) |
+| Utilities | `source/Lib/Utilities/` | `NoMallocThreadPool` | — | 1 file |
+| EncoderLib | `source/Lib/EncoderLib/` | `EncLib` | `EncoderLib.spec.md` | 25 files (BinEncoder through EncLib) |
+| DecoderLib | `source/Lib/DecoderLib/` | `DecCu` | — | 1 file |
+| VVenC API | `source/Lib/vvenc/` | `VVEncImpl` | `VVenC.spec.md` | 3 files (vvencCfg, vvenc, vvencimpl) |
+| vvencapp | `source/App/vvencapp/` | — | — | 1 file |
+| vvencFFapp | `source/App/vvencFFapp/` | `EncApp` | — | 2 files (EncApp, encmain) |
 
-_This document is a placeholder draft and will be refined as development progresses._
+**Total: 73 internal spec files across 7 modules.**
 
-## C++ Coding Conventions
+## 3. System Architecture
+
+```mermaid
+graph TB
+    subgraph Applications
+        vvencapp[vvencapp CLI]
+        vvencFFapp[vvencFFapp CLI]
+    end
+
+    subgraph VVenC_API["VVenC API"]
+        vvenc_C_API["vvenc.h (C API)"]
+        vvencCfg["vvencCfg (config struct)"]
+        VVEncImpl["VVEncImpl (internal wrapper)"]
+    end
+
+    subgraph EncoderLib
+        EncLib["EncLib (top-level)"]
+        EncPicture["EncPicture"]
+        EncSlice["EncSlice"]
+        EncCu["EncCu"]
+        IntraSearch["IntraSearch"]
+        InterSearch["InterSearch"]
+        EncGOP["EncGOP"]
+        RateCtrl["RateCtrl"]
+        SEIFilmGrain["SEIFilmGrainAnalyzer"]
+    end
+
+    subgraph CommonLib
+        CoreData["Core Data (Mv, Unit, Slice, Picture)"]
+        Transforms["Transforms (TrQuant, Rom, Quant)"]
+        Prediction["Prediction (IntraPred, InterPred)"]
+        LoopFilters["Loop Filters (SAO, ALF, Deblock)"]
+        Infrastructure["Infrastructure (BitStream, dtrace, Contexts)"]
+    end
+
+    subgraph Utilities
+        NoMallocTP["NoMallocThreadPool"]
+    end
+
+    subgraph DecoderLib
+        DecCu["DecCu"]
+    end
+
+    vvencapp --> vvenc_C_API
+    vvencFFapp --> vvenc_C_API
+    vvenc_C_API --> VVEncImpl
+    VVEncImpl --> vvencCfg
+    VVEncImpl --> EncLib
+    EncLib --> EncPicture
+    EncLib --> EncGOP
+    EncLib --> RateCtrl
+    EncPicture --> EncSlice
+    EncSlice --> EncCu
+    EncCu --> IntraSearch
+    EncCu --> InterSearch
+    IntraSearch --> CommonLib
+    InterSearch --> CommonLib
+    EncPicture --> LoopFilters
+    EncPicture --> Prediction
+    EncCu --> Transforms
+    EncLib --> NoMallocTP
+    VVEncImpl --> DecCu
+```
+
+## 4. Detailed Data Flow
+
+```mermaid
+sequenceDiagram
+    participant CLI as vvencapp / vvencFFapp
+    participant CAPI as vvenc C API
+    participant Impl as VVEncImpl
+    participant EL as EncLib
+    participant EP as EncPicture
+    participant ES as EncSlice
+    participant ECU as EncCu
+    participant CL as CommonLib
+
+    CLI->>CAPI: vvenc_encoder_create()
+    CAPI->>Impl: new VVEncImpl
+    Impl->>EL: init(encCfg)
+    Note over EL: allocate picture buffers, init modules
+
+    loop for each picture
+        CLI->>CAPI: vvenc_encode(yuv, au, done)
+        CAPI->>Impl: encode(yuv, au, done)
+        Impl->>EL: encode(pic)
+        EL->>EP: compressPic(pic)
+        EP->>ES: compressSlice(slice)
+        ES->>ECU: compressCtu(ctu)
+        ECU->>CL: intra/inter search, transform, quant
+        CL-->>ECU: coded coefficients
+        ECU-->>ES: CU data
+        ES->>ES: CABAC write, tile/slice packing
+        ES-->>EP: slice bitstream
+        EP->>EP: loop filters (SAO, ALF, deblock)
+        EP-->>EL: reconstructed picture
+        EL-->>Impl: access unit
+        Impl-->>CAPI: vvencAccessUnit
+        CAPI-->>CLI: encoded bitstream output
+    end
+
+    CLI->>CAPI: vvenc_encoder_close()
+    CAPI->>Impl: uninit()
+    Impl->>EL: uninit()
+    Note over Impl: release all buffers
+```
+
+## 5. C++ Coding Conventions
 
 This section documents the C++ idioms, naming conventions, and patterns used throughout the deepenc codebase. All generated specifications and class declarations must follow these conventions.
 

@@ -7,7 +7,21 @@ const sharp = require('sharp');
 
 const ROOT = path.resolve(__dirname, '..');
 
-function findArtifactDirs() {
+function findArtifactDirs(specPath) {
+  // When --file is given, return only that spec's artifact directory
+  if (specPath) {
+    const absSpec = path.resolve(ROOT, specPath);
+    const specDir = path.dirname(absSpec);
+    const specName = path.basename(absSpec);
+    const artifactDir = path.join(specDir, '.artifacts', specName);
+    if (fs.existsSync(artifactDir)) {
+      const label = specPath.replace(/\.spec\.md$/, '');
+      return { [label]: artifactDir };
+    }
+    console.error(`  No artifact directory found for ${specPath} (expected ${artifactDir})`);
+    return {};
+  }
+
   const dirs = {};
 
   const rootArtifacts = path.join(ROOT, '.artifacts');
@@ -53,9 +67,9 @@ function findFilesRecursive(dir, ext) {
   return results;
 }
 
-async function validateMermaid() {
+async function validateMermaid(specPath) {
   const results = { pass: [], fail: [] };
-  const dirs = findArtifactDirs();
+  const dirs = findArtifactDirs(specPath);
 
   let totalFound = 0;
   for (const [label, dir] of Object.entries(dirs)) {
@@ -88,7 +102,7 @@ async function captureFilmstrip(htmlFile) {
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 720, height: 480 } });
-    await page.goto(`file://${htmlFile}`, { waitUntil: 'networkidle', timeout: 15000 });
+    await page.goto(`file://${htmlFile}`, { waitUntil: 'networkidle', timeout: 30000 });
 
     const duration = await page.evaluate(() => {
       if (typeof window.ANIMATION_DURATION_MS !== 'undefined') return window.ANIMATION_DURATION_MS;
@@ -189,9 +203,9 @@ async function captureFilmstrip(htmlFile) {
   }
 }
 
-async function validateD3() {
+async function validateD3(specPath) {
   const results = { pass: [], fail: [], skipped: [] };
-  const dirs = findArtifactDirs();
+  const dirs = findArtifactDirs(specPath);
 
   let totalFound = 0;
   for (const [label, dir] of Object.entries(dirs)) {
@@ -223,8 +237,8 @@ async function validateD3() {
   return results;
 }
 
-function writeReports(mermaidResults, d3Results) {
-  const dirs = findArtifactDirs();
+function writeReports(mermaidResults, d3Results, specPath) {
+  const dirs = findArtifactDirs(specPath);
   for (const [label, dir] of Object.entries(dirs)) {
     const report = {
       timestamp: new Date().toISOString(),
@@ -261,10 +275,26 @@ function writeReports(mermaidResults, d3Results) {
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+  const fileIdx = args.indexOf('--file');
+  const specPath = fileIdx !== -1 ? args[fileIdx + 1] : null;
+
+  if (fileIdx !== -1 && !specPath) {
+    console.error('Usage: node scripts/test-artifacts.js [--file <relative-spec-path>]');
+    process.exit(1);
+  }
+  if (specPath) {
+    const absPath = path.resolve(ROOT, specPath);
+    if (!fs.existsSync(absPath)) {
+      console.error(`ERROR: Spec file not found: ${absPath}`);
+      process.exit(1);
+    }
+  }
+
   console.log('=== Artifact Validation ===\n');
 
   console.log('Searching for artifact directories...');
-  const dirs = findArtifactDirs();
+  const dirs = findArtifactDirs(specPath);
   if (Object.keys(dirs).length === 0) {
     console.log('  No .artifacts/ directories found.');
     console.log('  Run `npm run extract -- --all` first to extract artifacts from spec files.\n');
@@ -275,7 +305,7 @@ async function main() {
   }
 
   console.log('\n--- Mermaid Diagrams ---');
-  const mermaidResults = await validateMermaid();
+  const mermaidResults = await validateMermaid(specPath);
   const mMetrics = {
     passed: mermaidResults.pass.length,
     failed: mermaidResults.fail.length,
@@ -284,7 +314,7 @@ async function main() {
   console.log(`\n  ${mMetrics.passed} passed, ${mMetrics.failed} failed${mMetrics.total > 0 ? ` (${Math.round(mMetrics.passed / mMetrics.total * 100)}%)` : ''}\n`);
 
   console.log('--- D3 Animation Filmstrip ---');
-  const d3Results = await validateD3();
+  const d3Results = await validateD3(specPath);
   const dMetrics = {
     passed: d3Results.pass.length,
     failed: d3Results.fail.length,
@@ -293,7 +323,7 @@ async function main() {
   console.log(`\n  ${dMetrics.passed} captured, ${dMetrics.failed} failed, ${dMetrics.skipped} skipped\n`);
 
   console.log('--- Writing Reports ---');
-  writeReports(mermaidResults, d3Results);
+  writeReports(mermaidResults, d3Results, specPath);
 
   const totalFail = mermaidResults.fail.length + d3Results.fail.length;
   console.log(`\n=== Summary ===`);

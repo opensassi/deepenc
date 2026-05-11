@@ -6,6 +6,7 @@
   "scripts": {
     "extract": "node scripts/extract-artifacts.js",
     "test-artifacts": "node scripts/test-artifacts.js",
+    "test-artifact": "node scripts/test-artifacts.js --file",
     "validate-all": "node scripts/extract-artifacts.js --all && node scripts/test-artifacts.js",
     "verify-animation": "node scripts/verify-artifact.js"
   },

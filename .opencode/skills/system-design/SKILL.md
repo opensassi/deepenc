@@ -33,7 +33,32 @@ When activated:
    - End the response by asking whether to apply the revisions with `generate technical specification` or whether the user has additional changes.
    - Only produce the full revised document when the user explicitly invokes `generate technical specification` (or gives a clear equivalent confirmation such as "apply these" or "yes, generate it").
 
-6. **Validation loop** — After generating or saving any artifact (diagram, animation, spec file), run the artifact validation pipeline to confirm all extracted artifacts pass. Use `npm run validate-all` for full validation, or `npm run extract -- --sub-module <name> && npm run test-artifacts` for a single module. For per-file spec files, use `node scripts/extract-artifacts.js --file <path>` instead. When a D3 animation is present, additionally run `npm run verify-animation -- --file <extracted-html-path>` to assert DOM state per keyframe. If any step fails, investigate and fix the issue before declaring the command complete.
+6. **Validation loop** — After generating or saving any artifact (diagram, animation, spec file), run the artifact validation pipeline to confirm all extracted artifacts pass.
+
+   **Fast per-file validation (recommended for single spec files):**
+   ```
+   node scripts/extract-artifacts.js --file <path>
+   node scripts/test-artifacts.js --file <path>
+   ```
+   The `--file` flag processes only that spec's mermaid + D3 artifacts in ~10-30s.
+
+   **Full validation (slow — 5-9 min when many D3 animations exist):**
+   ```
+   npm run validate-all
+   ```
+   Avoid full validation inside sub-agents; use it only interactively or as a final check at module boundaries.
+
+   **Sub-module validation** (requires Module Reference table in root spec):
+   ```
+   npm run extract -- --sub-module <name> && npm run test-artifacts
+   ```
+
+   When a D3 animation is present, additionally run:
+   ```
+   npm run verify-animation -- --file <extracted-html-path>
+   ```
+
+   If any step fails, investigate and fix the issue before declaring the command complete.
 
 ---
 
@@ -125,7 +150,13 @@ When the system's logical rules are correctly implemented, the animation will pl
     - Use 0-based indexing for the in-UI keyframe counter: show `0/19` not `1/20`. The total must be dynamically derived from `keyframes.length - 1` via a `<span id="kf-total">` element.
     - Use `[data-testid="play-pause"]` as the play/pause button selector (may also add class `.play-pause` as a secondary selector for backwards compatibility).
     - Be embedded as a ` ```html ` fenced code block in `technical-specification.md` (in §5 Visualization, under an "Animation Source" subsection), alongside the description of the animation phases and controls.
-5. **Validation** – After embedding in the spec file, run `npm run extract -- --all && npm run test-artifacts` (or `npm run validate-all`) to confirm the HTML is extracted to `.artifacts/` and the filmstrip test captures one frame per keyframe successfully with no errors. If the test reports `ANIMATION_KEYFRAMES not set` or fails to find the play button, fix the HTML and re-run.
+5. **Validation** – After embedding in the spec file, run:
+   ```
+   node scripts/extract-artifacts.js
+   node scripts/test-artifacts.js --file technical-specification.md
+   ```
+   to confirm the HTML is extracted to `.artifacts/` and the filmstrip test captures one frame per keyframe successfully with no errors. (Use `--file` to avoid the full-suite timeout; only one D3 animation lives in the root spec.)
+   If the test reports `ANIMATION_KEYFRAMES not set` or fails to find `[data-testid="play-pause"]`, fix the HTML and re-run.
 6. **Verification** – Run `npm run verify-animation -- --file .artifacts/.../d3-animation.html` to assert that every keyframe's DOM state matches the expected values in `ANIMATION_VERIFICATION`. All keyframes must pass. If any assertion fails, debug the D3 state transitions and re-run from step 4.
 
 **Validation (self‑test)**  
@@ -212,7 +243,12 @@ The generated file must follow this 7‑section structure:
 6. **Testing Requirements** — unit test table for every public method
 7. **CLI Entry Point** — how this module is wired in (reference to `Cli` module or parent facade)
 
-After writing the spec file, run `npm run extract -- --sub-module <SubModuleName> && npm run test-artifacts` to validate the generated mermaid diagrams render correctly.
+After writing the spec file, run:
+```
+node scripts/extract-artifacts.js --file source/Lib/<Module>/<SubModuleName>.spec.md
+node scripts/test-artifacts.js --file source/Lib/<Module>/<SubModuleName>.spec.md
+```
+to validate the generated mermaid diagrams render correctly. Prefer `--file` over `npm run test-artifacts` to avoid the full-suite timeout.
 
 ---
 
@@ -309,6 +345,7 @@ During your analysis, you should gently steer the user toward designs that:
 - **Single‑export boundary**: Only the facade class file (e.g., `Storage.h`) may export symbols from a sub‑module directory. Internal implementation files (e.g., `RedisEntityRepository.h`) are not directly importable by other modules — they are accessed through the facade's public properties. Spec files and implementation files use CamelCase matching the class name.
 - **Project naming conventions**: Member variables use `m_` prefix (`m_p` for pointers, `m_b` for bools, `m_e` for enums, `m_c` for strings); private helper methods use `x` prefix; all classes use PascalCase; constants use `static constexpr`.
 - **Config format**: Use `config.json` (JSON) rather than YAML for the bootstrap configuration. The `Cli` module parses JSON via `JSON.parse` + `readFileSync`.
+- **Mermaid node label safety** — Avoid `<>`, `()`, and `&lt;&gt;` in Mermaid node labels. These are parsed as HTML/markup and cause silent render failures in the `mmdc` pipeline. Use plain text descriptions instead (e.g., `PelBuf` not `AreaBuf<Pel>`, `current state pairs` not `(type, value) pairs`).
 
 ---
 
@@ -373,4 +410,8 @@ For the D3 animation, embed the full HTML as a ` ```html ` fenced code block in 
 - Use 0-based indexing (e.g., `0/19`) with a dynamic `<span id="kf-total">` for the keyframe counter.
 For sub‑module specs, save to `src/<module>/<Name>.spec.md` (e.g., `src/storage/RedisEntityRepository.spec.md`).
 
-After saving any artifact that modifies `technical-specification.md` or any `.spec.md` file, run `npm run validate-all` (or `npm run extract -- --sub-module <name> && npm run test-artifacts` for a single module) to confirm all generated diagrams and animations pass the automated validation pipeline. Do not consider the command complete until validation passes.
+After saving any artifact that modifies `technical-specification.md` or any `.spec.md` file, run:
+- For individual spec files: `node scripts/extract-artifacts.js --file <path> && node scripts/test-artifacts.js --file <path>` (~10-30s)
+- For a sub-module: `npm run extract -- --sub-module <name> && node scripts/test-artifacts.js --file src/<Module>/<Name>.spec.md`
+- For full validation (slow): `npm run validate-all`
+Do not consider the command complete until validation passes.
