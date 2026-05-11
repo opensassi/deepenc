@@ -1,0 +1,3 @@
+[submodule "deepenc-harness"]
+	path = deepenc-harness
+	url = git@github.com:opensassi/deepenc-harness.git
