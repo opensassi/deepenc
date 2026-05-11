@@ -1,4 +1,16 @@
 {
   "private": true,
-  "workspaces": ["deepenc-harness"]
+  "workspaces": [
+    "deepenc-harness"
+  ],
+  "scripts": {
+    "extract": "node scripts/extract-artifacts.js",
+    "test-artifacts": "node scripts/test-artifacts.js",
+    "validate-all": "node scripts/extract-artifacts.js --all && node scripts/test-artifacts.js",
+    "verify-animation": "node scripts/verify-artifact.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0",
+    "sharp": "^0.34.5"
+  }
 }

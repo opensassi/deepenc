@@ -13,12 +13,25 @@ function findArtifactDirs() {
   const rootArtifacts = path.join(ROOT, '.artifacts');
   if (fs.existsSync(rootArtifacts)) dirs['.artifacts'] = rootArtifacts;
 
-  const srcDir = path.join(ROOT, 'src');
-  if (fs.existsSync(srcDir)) {
-    for (const entry of fs.readdirSync(srcDir)) {
-      const moduleArtifacts = path.join(srcDir, entry, '.artifacts');
-      if (fs.statSync(path.join(srcDir, entry)).isDirectory() && fs.existsSync(moduleArtifacts)) {
-        dirs[`src/${entry}/.artifacts`] = moduleArtifacts;
+  for (const base of ['src', 'source']) {
+    const baseDir = path.join(ROOT, base);
+    if (!fs.existsSync(baseDir)) continue;
+
+    const xFind = (dir, label) => {
+      const artifactPath = path.join(dir, '.artifacts');
+      if (fs.existsSync(artifactPath)) {
+        dirs[label] = artifactPath;
+      }
+      for (const sub of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (sub.isDirectory() && sub.name !== '.artifacts' && sub.name !== 'node_modules') {
+          xFind(path.join(dir, sub.name), `${label}/${sub.name}`);
+        }
+      }
+    };
+
+    for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        xFind(path.join(baseDir, entry.name), `${base}/${entry.name}`);
       }
     }
   }
@@ -103,20 +116,29 @@ async function captureFilmstrip(htmlFile) {
     fs.mkdirSync(filmDir, { recursive: true });
 
     const frames = [];
-    const playBtn = await page.$('[data-testid="play-pause"], .play-pause, #play-btn, button.play');
-    if (playBtn) {
-      await playBtn.click();
-    }
 
     if (keyframes) {
-      let prevTime = 0;
       for (let i = 0; i < keyframes.length; i++) {
         const kf = keyframes[i];
-        const waitMs = Math.round(kf.time);
-        const delay = i === 0 ? 500 : Math.round(kf.time - prevTime);
-        if (delay > 0) {
-          await new Promise(r => setTimeout(r, delay));
-        }
+        await page.evaluate((idx) => {
+          if (typeof window.jumpToKeyframe === 'function') {
+            window.jumpToKeyframe(idx);
+          } else {
+            // Fallback: seek via keyframes time if no jumpToKeyframe
+            const allKf = window.ANIMATION_KEYFRAMES || [];
+            const at = allKf[idx] ? allKf[idx].time : 0;
+            if (window.__seekToTime) window.__seekToTime(at);
+          }
+        }, i);
+        const settle = i === 0 ? 1000 : 200;
+        await new Promise(r => setTimeout(r, settle));
+        const domState = await page.evaluate(() => {
+          if (typeof window.getAnimationState === 'function') {
+            const s = window.getAnimationState();
+            return `hor=${s.hor} ver=${s.ver} prec=${s.precision} log=${s.logCount}`;
+          }
+          return '';
+        });
         const frameFile = path.join(filmDir, `frame-${i}-${kf.label}.png`);
         const tmpFile = path.join(filmDir, `frame-${i}-${kf.label}.tmp.png`);
         await page.screenshot({ path: tmpFile });
@@ -129,8 +151,7 @@ async function captureFilmstrip(htmlFile) {
         fs.unlinkSync(tmpFile);
         execSync(`convert "${frameFile}" -colorspace Gray "${frameFile}"`, { stdio: 'ignore' });
         frames.push({ file: path.relative(ROOT, frameFile), label: kf.label, time: kf.time });
-        console.log(`    frame ${i}/${keyframes.length} @ ${waitMs}ms → frame-${i}-${kf.label}.png`);
-        prevTime = kf.time;
+        console.log(`    frame ${i}/${keyframes.length} → frame-${i}-${kf.label}.png  [${domState}]`);
       }
       return { pass: true, animationDurationMs: duration || keyframes[keyframes.length - 1].time, frames, keyframes, skipped: false };
     }

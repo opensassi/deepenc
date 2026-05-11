@@ -33,7 +33,7 @@ When activated:
    - End the response by asking whether to apply the revisions with `generate technical specification` or whether the user has additional changes.
    - Only produce the full revised document when the user explicitly invokes `generate technical specification` (or gives a clear equivalent confirmation such as "apply these" or "yes, generate it").
 
-6. **Validation loop** — After generating or saving any artifact (diagram, animation, spec file), run the artifact validation pipeline to confirm all extracted artifacts pass. Use `npm run validate-all` for full validation, or `npm run extract -- --sub-module <name> && npm run test-artifacts` for a single module. If validation fails, investigate and fix the issue before declaring the command complete.
+6. **Validation loop** — After generating or saving any artifact (diagram, animation, spec file), run the artifact validation pipeline to confirm all extracted artifacts pass. Use `npm run validate-all` for full validation, or `npm run extract -- --sub-module <name> && npm run test-artifacts` for a single module. For per-file spec files, use `node scripts/extract-artifacts.js --file <path>` instead. When a D3 animation is present, additionally run `npm run verify-animation -- --file <extracted-html-path>` to assert DOM state per keyframe. If any step fails, investigate and fix the issue before declaring the command complete.
 
 ---
 
@@ -116,16 +116,28 @@ When the system's logical rules are correctly implemented, the animation will pl
    - Use the exact component names from the architecture diagram for grouping DOM elements.
    - Implement every step of the sequence diagram; there should be a 1:1 correspondence between sequence‑diagram arrows and D3 transitions.
    - Include a legend, clear axis labels, and an automatic replay that resets cleanly.
-   - Set `window.ANIMATION_DURATION_MS` to the total animation duration in milliseconds (integer).
+    - Set `window.ANIMATION_DURATION_MS` to the total animation duration in milliseconds (integer).
     - Set `window.ANIMATION_KEYFRAMES` to an array of `{ time: number, label: string }` objects, one per meaningful system state. The label must be a short kebab-case identifier (e.g., `"storage-panel"`). Each keyframe corresponds to a distinct visual state that a vision model can evaluate. The filmstrip test outputs each keyframe as `frame-{index}-{label}.png` (zero-indexed in capture order), ensuring files sort alphabetically by capture sequence.
-   - Use `[data-testid="play-pause"]` as the play/pause button selector (may also add class `.play-pause` as a secondary selector for backwards compatibility).
-   - Be embedded as a ` ```html ` fenced code block in `technical-specification.md` (in §5 Visualization, under an "Animation Source" subsection), alongside the description of the animation phases and controls.
+    - Set `window.ANIMATION_VERIFICATION` to an array of objects, one per keyframe, containing the expected DOM state for automated assertions. Each object must include at minimum `label`, plus field-specific expected values (e.g., `hor`, `ver`, `precision`, `bounds`, `logCount`). This is the assertion contract consumed by `verify-artifact.js`.
+    - Expose `window.jumpToKeyframe(idx)` — jumps to keyframe at index `idx` with instant (duration=0) transitions, clearing and rebuilding the operation log to reflect exactly `idx + 1` entries.
+    - Expose `window.resetAnimation()` — resets the animation to its initial paused state (keyframe 0, no log entries beyond the initial state).
+    - Expose `window.getAnimationState()` — returns `{ hor, ver, precision, boundsOpacity, logCount, keyframeIdx, keyframeLabel }` read from the current DOM, for use by `verify-artifact.js`.
+    - Use 0-based indexing for the in-UI keyframe counter: show `0/19` not `1/20`. The total must be dynamically derived from `keyframes.length - 1` via a `<span id="kf-total">` element.
+    - Use `[data-testid="play-pause"]` as the play/pause button selector (may also add class `.play-pause` as a secondary selector for backwards compatibility).
+    - Be embedded as a ` ```html ` fenced code block in `technical-specification.md` (in §5 Visualization, under an "Animation Source" subsection), alongside the description of the animation phases and controls.
 5. **Validation** – After embedding in the spec file, run `npm run extract -- --all && npm run test-artifacts` (or `npm run validate-all`) to confirm the HTML is extracted to `.artifacts/` and the filmstrip test captures one frame per keyframe successfully with no errors. If the test reports `ANIMATION_KEYFRAMES not set` or fails to find the play button, fix the HTML and re-run.
+6. **Verification** – Run `npm run verify-animation -- --file .artifacts/.../d3-animation.html` to assert that every keyframe's DOM state matches the expected values in `ANIMATION_VERIFICATION`. All keyframes must pass. If any assertion fails, debug the D3 state transitions and re-run from step 4.
 
 **Validation (self‑test)**  
 After generation, mentally inject a single inconsistency (e.g., a human engagement estimate that exceeds the attention window by a factor of ten). The author must confirm that the animation would visibly break for that input – otherwise the command is not satisfied and the design must be reworked.
 
-Additionally, confirm that `window.ANIMATION_DURATION_MS` is set to a positive integer, that `window.ANIMATION_KEYFRAMES` contains at least one entry with a `time` and `label`, and that a `[data-testid="play-pause"]` element exists and toggles playback. These are required by the automated filmstrip test harness.
+Additionally, confirm that the following requirements are met by the automated test harness:
+- `window.ANIMATION_DURATION_MS` is set to a positive integer.
+- `window.ANIMATION_KEYFRAMES` contains at least one entry with a `time` and `label`.
+- `window.ANIMATION_VERIFICATION` contains one entry per keyframe with expected DOM assertion values.
+- `window.jumpToKeyframe`, `window.resetAnimation`, and `window.getAnimationState` are all functions on the global scope.
+- A `[data-testid="play-pause"]` element exists and toggles playback.
+- The keyframe counter in the UI uses 0-based indexing with a dynamic total (`<span id="kf-total">`).
 
 ### `generate testing plan`
 
@@ -352,7 +364,13 @@ When instructed via an explicit command (`generate sequence diagram`, `generate 
 When responding to a free‑form revision request (e.g., "change X to Y"), output **only** the structured list of revisions in the `revise technical specification` format, followed by a prompt asking whether to apply them. Do not apply any changes until `generate technical specification` or an explicit confirmation is received.
 
 For the Manim animation, save as `animation.py` and include a brief comment at the top explaining how to run it.
-For the D3 animation, embed the full HTML as a ` ```html ` fenced code block in `technical-specification.md` (in §5 under an "Animation Source" subsection). Include a brief comment at the top of the HTML referencing the sub‑module sequence diagram and architecture diagram. The `npm run extract` step will place it in `.artifacts/technical-specification.md/d3-animation.html`. The generated HTML must set `window.ANIMATION_DURATION_MS` and include a `[data-testid="play-pause"]` button selector for automated filmstrip testing.
+For the D3 animation, embed the full HTML as a ` ```html ` fenced code block in `technical-specification.md` (in §5 under an "Animation Source" subsection). Include a brief comment at the top of the HTML referencing the sub‑module sequence diagram and architecture diagram. The `npm run extract` step will place it in `.artifacts/technical-specification.md/d3-animation.html`. The generated HTML must:
+- Set `window.ANIMATION_DURATION_MS` to the total duration in milliseconds.
+- Set `window.ANIMATION_KEYFRAMES` to an array of `{ time, label }` objects.
+- Set `window.ANIMATION_VERIFICATION` to an array of per-keyframe expected DOM state objects.
+- Expose `window.jumpToKeyframe(idx)`, `window.resetAnimation()`, and `window.getAnimationState()` as global functions.
+- Include a `[data-testid="play-pause"]` button selector for automated filmstrip testing.
+- Use 0-based indexing (e.g., `0/19`) with a dynamic `<span id="kf-total">` for the keyframe counter.
 For sub‑module specs, save to `src/<module>/<Name>.spec.md` (e.g., `src/storage/RedisEntityRepository.spec.md`).
 
 After saving any artifact that modifies `technical-specification.md` or any `.spec.md` file, run `npm run validate-all` (or `npm run extract -- --sub-module <name> && npm run test-artifacts` for a single module) to confirm all generated diagrams and animations pass the automated validation pipeline. Do not consider the command complete until validation passes.

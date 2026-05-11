@@ -138,6 +138,26 @@ function main() {
   const args = process.argv.slice(2);
   const subModuleIdx = args.indexOf('--sub-module');
   const allFlag = args.includes('--all');
+  const fileIdx = args.indexOf('--file');
+
+  if (fileIdx !== -1) {
+    const filePath = args[fileIdx + 1];
+    if (!filePath) {
+      console.error('Usage: node scripts/extract-artifacts.js --file <relative-path>');
+      process.exit(1);
+    }
+    const absPath = path.resolve(ROOT, filePath);
+    if (!fs.existsSync(absPath)) {
+      console.error(`ERROR: File not found: ${absPath}`);
+      process.exit(1);
+    }
+    const outputDir = path.join(path.dirname(absPath), '.artifacts');
+    fs.mkdirSync(outputDir, { recursive: true });
+    console.log(`Processing ${filePath} → ${path.join(path.dirname(filePath), '.artifacts/')}`);
+    processSpecFile(absPath, outputDir);
+    console.log('\nDone. Run `npm run test-artifacts` to validate.');
+    return;
+  }
 
   const modules = parseModuleReference();
 
