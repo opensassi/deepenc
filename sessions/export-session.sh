@@ -28,7 +28,7 @@ JSON_FILE="${SESSIONS_DIR}/${TITLE_SLUG}-${SESSION_ID_NO_PREFIX}.json"
 SHA_FILE="${SESSIONS_DIR}/${TITLE_SLUG}-${SESSION_ID_NO_PREFIX}.sha256"
 
 echo "=> Exporting session ${SESSION_ID}..."
-opencode export "$SESSION_ID" --sanitize > "$JSON_FILE"
+opencode export "$SESSION_ID" 2>/dev/null > "$JSON_FILE"
 echo "   Saved: ${JSON_FILE}"
 
 echo "=> Computing content hash..."
