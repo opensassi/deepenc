@@ -16,3 +16,5 @@ deploy
 .project
 .cproject
 node_modules/
+.artifacts/
+src/**/.artifacts/
