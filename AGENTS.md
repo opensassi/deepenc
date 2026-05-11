@@ -62,3 +62,7 @@ If a spec file contains no mermaid/html artifacts, `extract-artifacts.js` exits 
 `ERROR: No artifacts found in <file>. Run system-design skill to regenerate.`
 
 The D3 filmstrip requires `window.ANIMATION_KEYFRAMES` (array of `{time, label}`) to be set in `d3-animation.html`. Until the full animation is generated via the system design workflow, this test will report: `ANIMATION_KEYFRAMES not set`.
+
+# Git & Session Workflow
+
+CRITICAL: Before any development work, load the `git` skill via the skill tool and follow its commands. Always develop directly against `main` with a rebase workflow. At the end of every session, run `finish session` which orchestrates commit → rebase → tests → evaluation → push.

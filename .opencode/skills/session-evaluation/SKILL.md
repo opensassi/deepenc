@@ -73,7 +73,6 @@ Run the full session export pipeline: save the evaluation summary as a markdown 
    - `<title-slug>-<session-id-noprefix>.json.bz2` — compressed full session export
    - `<title-slug>-<session-id-noprefix>.sha256` — content integrity hash
 5. **Verify**: Confirm the archive is valid: `bzip2 -t sessions/<title-slug>-<session-id-noprefix>.json.bz2`
-6. **Commit**: Run `git add sessions/ && git commit -m "Add session archive: <title-slug>"` to persist the artifacts.
 
 ---
 
@@ -122,9 +121,8 @@ Apply the following template exactly when generating an evaluation:
 ## Design Principles
 
 - **`generate` is read-only** — It produces the evaluation summary inline but does not write any files, run any external commands, or modify the filesystem.
-- **`export` is the write command** — It creates files in `sessions/`, runs the export script, and commits to git.
+- **`export` is the write command** — It creates files in `sessions/` and runs the export script. Git operations (commit, push) are handled by the `git` skill's `finish session` command.
 - **`export` must be idempotent** — If the `.json.bz2` already exists, it should overwrite it (the `-f` flag in bzip2 handles this).
 - **Title slugs must be lower-dash-case** — e.g., `2026-05-11-deepenc-harness-setup`.
 - **Session ID prefix** — The `ses_` prefix on opencode session IDs is stripped for filenames to keep them clean.
 - **Always verify the archive** — After `export`, run `bzip2 -t` to confirm integrity before committing.
-- **Always commit** — Session artifacts are part of the project's permanent record and must be committed.

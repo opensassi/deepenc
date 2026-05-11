@@ -4,7 +4,8 @@
     "skill-manager": "allow",
     "system-design": "allow",
     "system-design-review": "allow",
-    "session-evaluation": "allow"
+    "session-evaluation": "allow",
+    "git": "allow"
   },
   "mcp": {
     "playwright": {
