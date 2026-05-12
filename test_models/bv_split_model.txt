@@ -1,0 +1,47 @@
+tree_sizes=1
+num_class=1
+num_tree_per_iteration=1
+label_index=0
+max_feature_idx=21
+objective=binary sigmoid:1
+feature_names=feat_0 feat_1 feat_2 feat_3 feat_4 feat_5 feat_6 feat_7 feat_8 feat_9 feat_10 feat_11 feat_12 feat_13 feat_14 feat_15 feat_16 feat_17 feat_18 feat_19 feat_20 feat_21
+feature_infos=[0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1] [0:1]
+
+Tree=0
+num_leaves=1
+num_cat=0
+split_feature=
+threshold=
+decision_type=
+left_child=
+right_child=
+leaf_value=0.5
+leaf_count=100000
+internal_value=0.5
+internal_count=100000
+is_linear=0
+shrinkage=1
+
+feature_importances:
+feat_0=1
+feat_1=1
+feat_2=1
+feat_3=1
+feat_4=1
+feat_5=1
+feat_6=1
+feat_7=1
+feat_8=1
+feat_9=1
+feat_10=1
+feat_11=1
+feat_12=1
+feat_13=1
+feat_14=1
+feat_15=1
+feat_16=1
+feat_17=1
+feat_18=1
+feat_19=1
+feat_20=1
+feat_21=1

@@ -585,6 +585,7 @@ int parse( int argc, char* argv[], vvenc_config* c, std::ostream& rcOstr )
 
   IStreamToArr<char>                toTraceRule                   ( &c->m_traceRule[0], VVENC_MAX_STRING_LEN  );
   IStreamToArr<char>                toTraceFile                   ( &c->m_traceFile[0], VVENC_MAX_STRING_LEN  );
+  IStreamToArr<char>                toMLModelDir                  ( &c->m_mlModelDir[0], VVENC_MAX_STRING_LEN );
   IStreamToArr<char>                toSummaryOutFilename          ( &c->m_summaryOutFilename[0], VVENC_MAX_STRING_LEN  );
   IStreamToArr<char>                toSummaryPicFilenameBase      ( &c->m_summaryPicFilenameBase[0], VVENC_MAX_STRING_LEN  );
 
@@ -688,6 +689,9 @@ int parse( int argc, char* argv[], vvenc_config* c, std::ostream& rcOstr )
     ("mtprofile",                                       toMtProfile,                                         "set automatic multi-threading setting (-1: auto, 0: off, 1,2,3: on, enables tiles, IFP and WPP automatically depending on the number of threads)")
     ("refreshtype,-rt",                                 toDecRefreshType,                                    "intra refresh type (none, cra, idr, rpsei: Recovery Point SEI, cra_cre: CRA, constrained RASL picture encoding, idr_no_radl: IDR w/o leading pictures, use for DASH, implies POC0IDR)")
     ("refreshsec,-rs",                                  c->m_IntraPeriodSec,                                 "intra period/refresh in seconds")
+    ("ml-enable",                                       c->m_mlEnable,                                        "Enable ML-guided CU split decisions (0=off, 1=on)")
+    ("ml-confidence",                                   c->m_mlConfidenceThreshold,                            "ML confidence threshold 0.0-1.0 (default 0.80)")
+    ("ml-model-dir",                                    toMLModelDir,                                           "Path to LightGBM model directory")
     ("intraperiod,-ip",                                 c->m_IntraPeriod,                                    "intra period in frames (0: specify intra period in seconds instead, see -refreshsec)")
     ;
   }

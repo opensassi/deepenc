@@ -6,7 +6,8 @@
     "system-design-review": "allow",
     "session-evaluation": "allow",
     "git": "allow",
-    "profiler": "allow"
+    "profiler": "allow",
+    "issue": "allow"
   },
   "mcp": {
     "playwright": {

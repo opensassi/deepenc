@@ -210,6 +210,9 @@ set( VVENC_ENABLE_LINK_TIME_OPT             ON  CACHE BOOL   "Enable link time o
 
 set( VVENC_ENABLE_THIRDPARTY_JSON           ON  CACHE STRING "Enable use of thirdparty json library, pass in SYSTEM to rely on an external nlohmann_json" )
 
+# ML-guided encoding via LightGBM
+set( VVENC_ENABLE_ML_LIGHTGBM               OFF CACHE BOOL "Enable ML-guided CU split decisions via LightGBM" )
+
 set_property( CACHE VVENC_ENABLE_THIRDPARTY_JSON PROPERTY STRINGS OFF SYSTEM ON )
 
 set( VVENC_INSTALL_FULLFEATURE_APP          OFF CACHE BOOL   "Install the full-feature app: vvencFFapp" )
@@ -427,6 +430,15 @@ else()
   message( STATUS "VVENC_ENABLE_THIRDPARTY_JSON is disabled" )
 endif()
 
+# handle LightGBM dependency
+if( VVENC_ENABLE_ML_LIGHTGBM )
+    message( STATUS "VVENC_ENABLE_ML_LIGHTGBM: ON" )
+    find_package( LightGBM REQUIRED )
+    add_compile_definitions( VVENC_ENABLE_ML_LIGHTGBM=1 )
+else()
+    message( STATUS "VVENC_ENABLE_ML_LIGHTGBM: OFF" )
+endif()
+
 # handle rpath correctly
 if( VVENC_ENABLE_INSTALL )
   if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
@@ -453,6 +465,7 @@ endif()
 
 set( VVENC_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/source/Lib" )
 
+add_subdirectory( "source/Lib/MLTools" )
 add_subdirectory( "source/Lib/vvenc" )
 add_subdirectory( "source/App/vvencapp" )
 add_subdirectory( "source/App/vvencFFapp" )
@@ -461,6 +474,10 @@ add_subdirectory( "test/vvencinterfacetest" )
 
 if( NOT BUILD_SHARED_LIBS )
   add_subdirectory( "test/vvenc_unit_test" )
+endif()
+
+if( VVENC_ENABLE_ML_LIGHTGBM )
+  add_subdirectory( "test/vvenc_mltest" )
 endif()
 
 include( cmake/modules/vvencTests.cmake )

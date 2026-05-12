@@ -46,6 +46,11 @@ POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "vvenc/vvencCfg.h"
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+#include "MLTools/FASTSplitPredictor.h"
+#endif
+
 #include "CABACWriter.h"
 #include "IntraSearch.h"
 #include "InterSearch.h"
@@ -300,6 +305,10 @@ private:
 
   GeoComboCostList      m_comboList;
   MergeItemList         m_mergeItemList;
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+  FASTSplitPredictor*   m_pMLPredictor;
+#endif
   std::array<Mv, MAX_NUM_SUBCU_DMVR>
                         m_subPuMvOffset[MRG_MAX_NUM_CANDS];
   Distortion            m_uiSadBestForQPA;
@@ -312,6 +321,10 @@ public:
   virtual ~EncCu();
 
   void  init                  ( const VVEncCfg& encCfg, const SPS& sps, std::vector<int>* const globalCtuQpVector, Ctx* syncPicCtx, RateCtrl* pRateCtrl );
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+  void  setMLPredictor        ( FASTSplitPredictor* predictor ) { m_pMLPredictor = predictor; }
+#endif
   void  setCtuEncRsrc         ( CABACWriter* cabacEstimator, CtxCache* ctxCache, ReuseUniMv* pReuseUniMv, BlkUniMvInfoBuffer* pBlkUniMvInfoBuffer, AffineProfList* pAffineProfList, IbcBvCand* pCachedBvs );
   void  destroy               ();
 

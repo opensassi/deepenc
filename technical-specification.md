@@ -13,16 +13,17 @@ This specification covers the deepenc source fork only. The harness tooling (tra
 ## Module Reference
 
 | Module | Directory | Facade Class | Aggregate Spec | Internal Spec Files |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | CommonLib | `source/Lib/CommonLib/` | — | `CommonLib.spec.md` | 38 files (BitStream through InitX86) |
 | Utilities | `source/Lib/Utilities/` | `NoMallocThreadPool` | — | 1 file |
 | EncoderLib | `source/Lib/EncoderLib/` | `EncLib` | `EncoderLib.spec.md` | 25 files (BinEncoder through EncLib) |
 | DecoderLib | `source/Lib/DecoderLib/` | `DecCu` | — | 1 file |
+| MLTools | `source/Lib/MLTools/` | `FASTSplitPredictor` | `MLTools.spec.md` | 3 files (FASTSplitPredictor, CUFeatureExtractor, FakeModelFactory) |
 | VVenC API | `source/Lib/vvenc/` | `VVEncImpl` | `VVenC.spec.md` | 3 files (vvencCfg, vvenc, vvencimpl) |
 | vvencapp | `source/App/vvencapp/` | — | — | 1 file |
 | vvencFFapp | `source/App/vvencFFapp/` | `EncApp` | — | 2 files (EncApp, encmain) |
 
-**Total: 73 internal spec files across 7 modules.**
+**Total: 76 internal spec files across 8 modules.**
 
 ## 3. System Architecture
 
@@ -63,6 +64,11 @@ graph TB
         NoMallocTP["NoMallocThreadPool"]
     end
 
+    subgraph MLTools["MLTools (optional, LightGBM)"]
+        FSP["FASTSplitPredictor<br/>model inference"]
+        CFE["CUFeatureExtractor<br/>feature extraction"]
+    end
+
     subgraph DecoderLib
         DecCu["DecCu"]
     end
@@ -85,6 +91,8 @@ graph TB
     EncPicture --> Prediction
     EncCu --> Transforms
     EncLib --> NoMallocTP
+    EncCu -.->|optional ML| FSP
+    FSP --> CFE
     VVEncImpl --> DecCu
 ```
 
@@ -120,6 +128,7 @@ sequenceDiagram
         ES-->>EP: slice bitstream
         EP->>EP: loop filters (SAO, ALF, deblock)
         EP-->>EL: reconstructed picture
+        Note over ECU: ML dual-path (if enabled):<br/>features --> FASTSplitPredictor<br/>high confidence: use ML split<br/>low confidence: fall back to RDO
         EL-->>Impl: access unit
         Impl-->>CAPI: vvencAccessUnit
         CAPI-->>CLI: encoded bitstream output

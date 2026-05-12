@@ -46,6 +46,11 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "EncCu.h"
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+#include "MLTools/CUFeatureExtractor.h"
+#endif
+
 #include "EncLib.h"
 #include "Analyze.h"
 #include "EncPicture.h"
@@ -975,6 +980,59 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     {
       xCheckFastCuChromaSplitting( tempCS, bestCS, partitioner, *m_modeCtrl.comprCUCtx );
     }
+    //////////////////////////////////////////////////////////////////////////
+    // ML-guided split prediction (LightGBM dual-path)
+#if VVENC_ENABLE_ML_LIGHTGBM
+    FASTSplitPredictor* mlPredictor = FASTSplitPredictor::getInstance();
+    if (mlPredictor && m_pcEncCfg->m_mlEnable && mlPredictor->isInitialized())
+    {
+        CUFeatureExtractor extractor;
+        std::vector<double> features;
+        int ret = extractor.extract(*tempCS->getCU(partitioner.chType, partitioner.treeType),
+                                     partitioner, features);
+        if (ret == 0 && features.size() > 0)
+        {
+            FASTSplitPredictor::SplitType mlSplit;
+            double confidence = 0.0;
+            ret = mlPredictor->predict(features,
+                                          m_pcEncCfg->m_mlConfidenceThreshold,
+                                          mlSplit, confidence);
+            if (ret == 0 && mlSplit != FASTSplitPredictor::NO_SPLIT)
+            {
+                m_modeCtrl.setMLSkipSplit(true);
+                PartSplit partSplit = CU_DONT_SPLIT;
+                switch (mlSplit)
+                {
+                case FASTSplitPredictor::QT_SPLIT: partSplit = CU_QUAD_SPLIT; break;
+                case FASTSplitPredictor::BH_SPLIT: partSplit = CU_HORZ_SPLIT; break;
+                case FASTSplitPredictor::BV_SPLIT: partSplit = CU_VERT_SPLIT; break;
+                case FASTSplitPredictor::TH_SPLIT: partSplit = CU_TRIH_SPLIT; break;
+                case FASTSplitPredictor::TV_SPLIT: partSplit = CU_TRIV_SPLIT; break;
+                default: break;
+                }
+                if (partSplit != CU_DONT_SPLIT)
+                {
+                    EncTestMode mlMode;
+                    switch (partSplit)
+                    {
+                    case CU_QUAD_SPLIT: mlMode = { ETM_SPLIT_QT, ETO_STANDARD, qp, false }; break;
+                    case CU_HORZ_SPLIT: mlMode = { ETM_SPLIT_BT_H, ETO_STANDARD, qp, false }; break;
+                    case CU_VERT_SPLIT: mlMode = { ETM_SPLIT_BT_V, ETO_STANDARD, qp, false }; break;
+                    case CU_TRIH_SPLIT: mlMode = { ETM_SPLIT_TT_H, ETO_STANDARD, qp, false }; break;
+                    case CU_TRIV_SPLIT: mlMode = { ETM_SPLIT_TT_V, ETO_STANDARD, qp, false }; break;
+                    default: mlMode = { ETM_INVALID, ETO_STANDARD, qp, false }; break;
+                    }
+                    if (mlMode.type != ETM_INVALID)
+                    {
+                        xCheckModeSplit(tempCS, bestCS, partitioner, mlMode);
+                        if (bestCS->cost < MAX_DOUBLE)
+                            return;
+                    }
+                }
+            }
+        }
+    }
+#endif
     //////////////////////////////////////////////////////////////////////////
     // split modes
     EncTestMode lastTestMode;

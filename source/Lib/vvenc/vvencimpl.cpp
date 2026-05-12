@@ -175,6 +175,25 @@ int VVEncImpl::init( vvenc_config* config )
   }
 #endif
 
+#if VVENC_ENABLE_ML_LIGHTGBM
+  if (m_cVVEncCfg.m_mlEnable)
+  {
+    m_pMLPredictor = new FASTSplitPredictor();
+    int ret = m_pMLPredictor->init(std::string(m_cVVEncCfg.m_mlModelDir));
+    if (ret == 0)
+    {
+      FASTSplitPredictor::setInstance(m_pMLPredictor);
+      msg.log(VVENC_INFO, "[ML] LightGBM models loaded from %s\n", m_cVVEncCfg.m_mlModelDir);
+    }
+    else
+    {
+      msg.log(VVENC_WARNING, "[ML] Failed to load models from %s, ML disabled\n", m_cVVEncCfg.m_mlModelDir);
+      delete m_pMLPredictor;
+      m_pMLPredictor = nullptr;
+    }
+  }
+#endif
+
   m_bInitialized = true;
   m_eState       = INTERNAL_STATE_INITIALIZED;
   return VVENC_OK;
@@ -237,8 +256,14 @@ int VVEncImpl::uninit()
 #endif
   }
 
-#if defined( __linux__ ) && defined( __GLIBC__ )
-  malloc_trim(0);   // free unused heap memory
+#if VVENC_ENABLE_ML_LIGHTGBM
+  if (m_pMLPredictor)
+  {
+    FASTSplitPredictor::setInstance(nullptr);
+    m_pMLPredictor->release();
+    delete m_pMLPredictor;
+    m_pMLPredictor = nullptr;
+  }
 #endif
 
   m_bInitialized = false;

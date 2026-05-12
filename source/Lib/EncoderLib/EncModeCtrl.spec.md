@@ -35,6 +35,7 @@ graph TB
 - **Inherits**: `CacheBlkInfoCtrl`, `BestEncInfoCache`
 - **Uses**: `VVEncCfg`, `RdCost`, `CodingStructure`, `Partitioner`, `Slice`, `EncTestMode`
 - **Helper types**: `ComprCUCtx`, `CodedCUInfo`, `BestEncodingInfo`
+- **ML gate**: `m_bMLSkipSplit` flag (set by `EncCu` when ML predictor has chosen the split)
 
 ## 5) Data Flow
 
@@ -69,6 +70,7 @@ sequenceDiagram
 | `m_tileIdx` | Internal | Current tile index for context tracking |
 | `ComprCUCtx::bestCostBeforeSplit` | Per-CU | Cost threshold for split/no-split decisions |
 | `ComprCUCtx::qtBeforeBt` | Per-CU | Quad-tree before binary/ternary split hint |
+| `m_bMLSkipSplit` | ML gate | When true, `trySplit()` returns false for all candidates — bypasses RDO split search |
 
 ## 7) Lifecycle
 
@@ -78,6 +80,8 @@ init() per EncoderLib
     → initCULevel() per CU recursion level
       → tryMode() / trySplit() for each candidate
       → useModeResult() on candidate acceptance
+      → [setMLSkipSplit(true) if ML predicted split]
+      → [trySplit() returns false when m_bMLSkipSplit is true]
     → finishCULevel() per CU recursion level
 initCTUEncoding() for next CTU
 destroy()

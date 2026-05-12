@@ -11,6 +11,10 @@ endif()
 
 set( VVENC_INST_TARGETS vvenc )
 
+if( VVENC_ENABLE_ML_LIGHTGBM AND TARGET vvenc_ml )
+  list( APPEND VVENC_INST_TARGETS vvenc_ml )
+endif()
+
 if( NOT VVENC_LIBRARY_ONLY )
   list( APPEND VVENC_INST_TARGETS vvencapp )
 

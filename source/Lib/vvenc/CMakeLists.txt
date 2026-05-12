@@ -79,7 +79,7 @@ add_compile_definitions( ${LIB_NAME_UC}_SOURCE )
 
 # set PRIVATE include directories for all targets in this directory
 include_directories( $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../include> $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}> )
-include_directories( . .. ../DecoderLib ../EncoderLib ../CommonLib ../CommonLib/x86 ../CommonLib/arm ../apputils )
+include_directories( . .. ../DecoderLib ../EncoderLib ../CommonLib ../CommonLib/x86 ../CommonLib/arm ../MLTools ../apputils )
 include_directories( SYSTEM ../../../thirdparty )
 
 # set common warning flags
@@ -205,6 +205,11 @@ if( TARGET INTEL_ITT)
   target_link_libraries( ${LIB_NAME} PRIVATE INTEL_ITT Threads::Threads )
 else()
   target_link_libraries( ${LIB_NAME} PRIVATE Threads::Threads )
+endif()
+
+if( VVENC_ENABLE_ML_LIGHTGBM AND TARGET vvenc_ml )
+  target_link_libraries( ${LIB_NAME} PRIVATE vvenc_ml )
+  target_compile_definitions( ${LIB_NAME} PRIVATE VVENC_ENABLE_ML_LIGHTGBM=1 )
 endif()
 
 if( CMAKE_USE_PTHREADS_INIT )

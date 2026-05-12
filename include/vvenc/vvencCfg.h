@@ -738,6 +738,11 @@ typedef struct vvenc_config
   bool                m_cfgUnused22;                                                     // TODO: remove unused memory from configuration
   char                m_cfgUnused23[2][VVENC_MAX_STRING_LEN];                            // TODO: remove unused memory from configuration
 
+  // ML-guided encoding (LightGBM)
+  int                 m_mlEnable;                      // 0=off, 1=on (default: 0)
+  double              m_mlConfidenceThreshold;         // minimum confidence 0.0-1.0 (default: 0.80)
+  char                m_mlModelDir[VVENC_MAX_STRING_LEN]; // path to model directory
+
   // trace rules
   bool                m_listTracingChannels;
   char                m_traceRule[VVENC_MAX_STRING_LEN];

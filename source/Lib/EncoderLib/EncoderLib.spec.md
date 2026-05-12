@@ -4,7 +4,7 @@
 
 EncoderLib implements the full VVC/H.266 encoding pipeline: picture preprocessing, motion-compensated temporal filtering, GOP-level encoding, slice coding, CTU/CU-level mode decision, entropy coding, and rate control. It is owned and driven by `EncLib` and consumed by `VVEncImpl` in the `vvenc` module.
 
-**Dependencies**: `CommonLib` (all data types, coding tools, transforms, filters). No dependency on `DecoderLib`.
+**Dependencies**: `CommonLib` (all data types, coding tools, transforms, filters). `MLTools` (optional, for LightGBM CU split prediction). No dependency on `DecoderLib`.
 
 **Lifecycle**: `EncLib::initEncoderLib(cfg)` → `encodePicture()` loop → `EncLib::uninitEncoderLib()`.
 
@@ -36,6 +36,7 @@ EncoderLib implements the full VVC/H.266 encoding pipeline: picture preprocessin
 | 22 | `SEIwrite.spec.md` | SEI NAL unit writing |
 | 23 | `SEIFilmGrainAnalyzer.spec.md` | Film grain analysis and SEI parameter estimation |
 | 24 | `EncHRD.spec.md` | Hypothetical reference decoder — HRD conformance |
+| 25 | `MLTools` (external) | `FASTSplitPredictor` — LightGBM CU split prediction (optional, VVENC_ENABLE_ML_LIGHTGBM) |
 
 ## 3. System Architecture
 

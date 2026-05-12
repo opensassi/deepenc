@@ -1,7 +1,7 @@
 dec.yuv
 rec.yuv
 str.bin
-/build/
+/build*/
 /bin/
 /lib/
 core

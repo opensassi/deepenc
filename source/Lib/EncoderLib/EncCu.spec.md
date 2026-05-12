@@ -40,6 +40,7 @@ graph TB
 - **Inherits**: `DecCu` (decoder CU helper)
 - **Owns**: `IntraSearch`, `InterSearch`, `EncModeCtrl`, `TrQuant`, `RdCost`, `LoopFilter`
 - **Uses**: `CABACWriter`, `RateCtrl`, `Picture`, `CodingStructure`, `UnitPartitioner`
+- **Optional**: `CUFeatureExtractor`, `FASTSplitPredictor` (from `MLTools`, conditional on `VVENC_ENABLE_ML_LIGHTGBM`)
 
 ## 5) Data Flow
 
@@ -50,6 +51,8 @@ sequenceDiagram
     participant IntraSearch
     participant InterSearch
     participant EncModeCtrl
+    participant CUFeatureExtractor
+    participant FASTSplitPredictor
 
     EncSlice->>EncCu: encodeCtu(pic, prevQP, ctuX, ctuY)
     EncCu->>EncCu: xCompressCtu()
@@ -63,6 +66,19 @@ sequenceDiagram
             InterSearch-->>EncCu: MV + cost
         end
         EncCu->>EncCu: xCheckBestMode()
+    end
+    opt ML dual-path enabled
+        EncCu->>CUFeatureExtractor: extract(cu, partitioner)
+        CUFeatureExtractor-->>EncCu: feature vector
+        EncCu->>FASTSplitPredictor: predict(features, threshold)
+        alt confidence >= threshold
+            FASTSplitPredictor-->>EncCu: split type + confidence
+            EncCu->>EncModeCtrl: setMLSkipSplit(true)
+            EncCu->>EncCu: xCheckModeSplit(mlSplit)
+        else confidence < threshold
+            FASTSplitPredictor-->>EncCu: NO_SPLIT
+            Note over EncCu: fall through to RDO split search
+        end
     end
     EncCu-->>EncSlice: encoded CTU data
 ```

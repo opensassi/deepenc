@@ -79,6 +79,9 @@ class VVEncImpl {
   std::string         m_cErrorString;
   std::string         m_cEncoderInfo;
   EncLib*             m_pEncLib         = nullptr;
+#if VVENC_ENABLE_ML_LIGHTGBM
+  FASTSplitPredictor* m_pMLPredictor    = nullptr;
+#endif
   MsgLog              msg;
 };
 ```

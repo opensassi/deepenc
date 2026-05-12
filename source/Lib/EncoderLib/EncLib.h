@@ -47,6 +47,10 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "vvenc/vvenc.h"
 #include "vvenc/vvencCfg.h"
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+#include "MLTools/FASTSplitPredictor.h"
+#endif
 #include "CommonLib/Nal.h"
 #include "EncCfg.h"
 
@@ -106,6 +110,10 @@ private:
   std::mutex                 m_stagesMutex;
   std::condition_variable    m_stagesCond;
   std::deque<AccessUnitList> m_AuList;
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+  FASTSplitPredictor*  m_pMLPredictor;
+#endif
 
 public:
   EncLib( MsgLog& logger );

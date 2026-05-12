@@ -340,6 +340,7 @@ protected:
   static_vector<ComprCUCtx, ( MAX_CU_DEPTH << 2 )> m_ComprCUCtxList;
   unsigned              m_skipThresholdE0023FastEnc;
   unsigned              m_tileIdx;
+  bool                  m_bMLSkipSplit = false;
 
 public:
   ComprCUCtx*           comprCUCtx;
@@ -357,6 +358,10 @@ public:
   bool useModeResult      ( const EncTestMode& encTestmode, CodingStructure*& tempCS,  Partitioner& partitioner, const bool useEDO );
 
   void beforeSplit        ( Partitioner& partitioner );
+
+  // ML-guided split gating
+  void setMLSkipSplit(bool b) { m_bMLSkipSplit = b; }
+  bool getMLSkipSplit() const { return m_bMLSkipSplit; }
 };
 
 } // namespace vvenc

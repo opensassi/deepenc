@@ -66,3 +66,37 @@ The D3 filmstrip requires `window.ANIMATION_KEYFRAMES` (array of `{time, label}`
 # Git & Session Workflow
 
 CRITICAL: Before any development work, load the `git` skill via the skill tool and follow its commands. Always develop directly against `main` with a rebase workflow. At the end of every session, run `finish session` which orchestrates commit → rebase → tests → evaluation → push.
+
+# Dev Environment Setup
+
+## GitHub CLI (for the `issue` skill)
+
+```bash
+sudo apt install gh
+gh auth login
+```
+
+Follow the browser-based OAuth flow or paste a personal access token. Verify with:
+
+```bash
+gh issue list --repo opensassi/deepenc
+```
+
+## LightGBM ML Module (optional, for ML-guided CU partitioning)
+
+Add the Microsoft package repository and install:
+
+```bash
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | \
+  sudo tee /usr/share/keyrings/microsoft.gpg > /dev/null
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] \
+  https://packages.microsoft.com/ubuntu/24.04/prod noble main" | \
+  sudo tee /etc/apt/sources.list.d/microsoft.list
+sudo apt update && sudo apt install liblightgbm-dev
+```
+
+Build with:
+
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Release -DVVENC_ENABLE_ML_LIGHTGBM=ON
+```

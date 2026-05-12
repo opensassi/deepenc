@@ -572,6 +572,8 @@ void EncModeCtrl::initCTUEncoding( const Slice &slice, int tileIdx )
 
 void EncModeCtrl::initCULevel( Partitioner &partitioner, const CodingStructure& cs, int  MergeSimpleFlag)
 {
+  m_bMLSkipSplit = false;
+
   // Min/max depth
   unsigned minDepth = 0;
   unsigned maxDepth = cs.pcv->getMaxDepth( cs.slice->sliceType, partitioner.chType );
@@ -655,6 +657,10 @@ void EncModeCtrl::finishCULevel( Partitioner &partitioner )
 
 bool EncModeCtrl::trySplit( const EncTestMode& encTestmode, const CodingStructure &cs, Partitioner& partitioner, const EncTestMode& lastTestmode )
 {
+  // ML-guided split gating: if ML already chose the split, skip RDO split search
+  if (m_bMLSkipSplit)
+    return false;
+
   ComprCUCtx& cuECtx = *comprCUCtx;
 
   const PartSplit implicitSplit = partitioner.getImplicitSplit( cs );

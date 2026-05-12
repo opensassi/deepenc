@@ -709,6 +709,11 @@ VVENC_DECL void vvenc_config_default(vvenc_config *c )
   memset( c->m_reservedInt8, 0, sizeof(c->m_reservedInt8) );
   memset( c->m_reservedDouble, 0, sizeof(c->m_reservedDouble) );
 
+  // ML-guided encoding defaults
+  c->m_mlEnable                     = 0;
+  c->m_mlConfidenceThreshold        = 0.80;
+  memset( c->m_mlModelDir, 0, sizeof(c->m_mlModelDir) );
+
   // init default preset
   vvenc_init_preset( c, vvencPresetMode::VVENC_MEDIUM );
 }

@@ -50,6 +50,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "vvenc/vvencCfg.h"
 #include "vvenc/vvenc.h"
 #include "EncoderLib/EncLib.h"
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+#include "MLTools/FASTSplitPredictor.h"
+#endif
 #include "Utilities/MsgLog.h"
 
 namespace vvenc {
@@ -144,6 +148,10 @@ private:
   std::string            m_cEncoderInfo;
 
   EncLib*                m_pEncLib = nullptr;
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+  FASTSplitPredictor*    m_pMLPredictor = nullptr;
+#endif
 
   MsgLog                 msg;
 };
