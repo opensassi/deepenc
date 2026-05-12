@@ -23,6 +23,10 @@ test/data/park_joy_*.yuv
 .profiler/
 *.y4m
 /logs/
+/ml-data/
+/ml-models/
+/ml-models-v2/
+/test/data/
 
 # microbenchmarks (ephemeral standalone benchmarks)
 /microbench/

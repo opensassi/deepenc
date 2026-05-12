@@ -8,10 +8,12 @@
 
 namespace vvenc {
 
+class CUFeatureExtractor;
+
 class FakeModelFactory {
 public:
     static int writeDummyModel(const std::string& path,
-                               int numFeatures = 22,
+                               int numFeatures = 31,
                                double constantScore = 0.5);
 
     static int writeAllDummyModels(const std::string& outputDir,

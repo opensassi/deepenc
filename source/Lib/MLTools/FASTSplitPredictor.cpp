@@ -1,5 +1,5 @@
 /** \file     FASTSplitPredictor.cpp
-    \brief    LightGBM-based CU split predictor (implementation)
+    \brief    LightGBM-based CU split predictor — Top-N algorithm (Taabane 2024)
 */
 
 #include "FASTSplitPredictor.h"
@@ -22,6 +22,14 @@ static const char* MODEL_NAMES[FASTSplitPredictor::NUM_MODELS] = {
     "bv_split_model.txt",
     "th_split_model.txt",
     "tv_split_model.txt"
+};
+
+static const FASTSplitPredictor::SplitType MODEL_SPLITS[FASTSplitPredictor::NUM_MODELS] = {
+    FASTSplitPredictor::QT_SPLIT,
+    FASTSplitPredictor::BH_SPLIT,
+    FASTSplitPredictor::BV_SPLIT,
+    FASTSplitPredictor::TH_SPLIT,
+    FASTSplitPredictor::TV_SPLIT
 };
 
 FASTSplitPredictor::FASTSplitPredictor()
@@ -67,60 +75,67 @@ int FASTSplitPredictor::init(const std::string& modelDir)
 }
 
 int FASTSplitPredictor::predict(const std::vector<double>& features,
-                                double confidenceThreshold,
-                                SplitType& outSplit,
-                                double& outConfidence)
+                                int nCandidates,
+                                double thNs,
+                                unsigned int allowedSplits,
+                                std::vector<std::pair<SplitType, double>>& outCandidates,
+                                bool& bEarlySkip)
 {
 #if VVENC_ENABLE_ML_LIGHTGBM
     if (!m_bInitialized)
     {
-        outSplit = NO_SPLIT;
-        outConfidence = 0.0;
+        bEarlySkip = true;
         return -1;
     }
 
-    double scores[NUM_MODELS];
+    outCandidates.clear();
+    bEarlySkip = false;
+
+    // Collect scores for allowed split types only
+    std::vector<std::pair<SplitType, double>> allScores;
     for (int i = 0; i < NUM_MODELS; ++i)
     {
+        SplitType st = MODEL_SPLITS[i];
+        if (!(allowedSplits & (1u << static_cast<unsigned int>(st))))
+            continue;
+
         double result = 0.0;
         int ret = xPredictOne(m_hBoosters[i], features, result);
-        if (ret != 0)
-            result = 0.0;
-        scores[i] = result;
+        if (ret == 0)
+            allScores.emplace_back(st, result);
     }
 
-    int bestIdx = 0;
-    double maxScore = scores[0];
-    for (int i = 1; i < NUM_MODELS; ++i)
+    if (allScores.empty())
     {
-        if (scores[i] > maxScore)
-        {
-            maxScore = scores[i];
-            bestIdx = i;
-        }
+        bEarlySkip = true;
+        return 0;
     }
 
-    outConfidence = maxScore;
+    // Sort descending by confidence
+    std::sort(allScores.begin(), allScores.end(),
+        [](const auto& a, const auto& b) { return a.second > b.second; });
 
-    if (maxScore >= confidenceThreshold)
+    // Check against no-skip threshold
+    if (allScores[0].second < thNs)
     {
-        static const SplitType splitMap[NUM_MODELS] = {
-            QT_SPLIT, BH_SPLIT, BV_SPLIT, TH_SPLIT, TV_SPLIT
-        };
-        outSplit = splitMap[bestIdx];
+        bEarlySkip = true;
+        return 0;
     }
-    else
-    {
-        outSplit = NO_SPLIT;
-    }
+
+    // Take top-N
+    int count = std::min(nCandidates, static_cast<int>(allScores.size()));
+    for (int i = 0; i < count; ++i)
+        outCandidates.push_back(allScores[i]);
 
     return 0;
 #else
     (void)features;
-    (void)confidenceThreshold;
-    outSplit = NO_SPLIT;
-    outConfidence = 0.0;
-    return 0;
+    (void)nCandidates;
+    (void)thNs;
+    (void)allowedSplits;
+    outCandidates.clear();
+    bEarlySkip = true;
+    return -1;
 #endif
 }
 
@@ -153,6 +168,39 @@ FASTSplitPredictor* FASTSplitPredictor::getInstance()
 void FASTSplitPredictor::setInstance(FASTSplitPredictor* predictor)
 {
     s_pInstance = predictor;
+}
+
+int FASTSplitPredictor::splitTypeToPartSplit(SplitType type)
+{
+    switch (type)
+    {
+    case QT_SPLIT: return 0;  // CU_QUAD_SPLIT = 0
+    case BH_SPLIT: return 2;  // CU_HORZ_SPLIT = 2
+    case BV_SPLIT: return 1;  // CU_VERT_SPLIT = 1
+    case TH_SPLIT: return 4;  // CU_TRIH_SPLIT = 4
+    case TV_SPLIT: return 3;  // CU_TRIV_SPLIT = 3
+    default:       return 2000; // CU_DONT_SPLIT = 2000
+    }
+}
+
+int FASTSplitPredictor::xSplitToIndex(SplitType type)
+{
+    switch (type)
+    {
+    case QT_SPLIT: return 0;
+    case BH_SPLIT: return 1;
+    case BV_SPLIT: return 2;
+    case TH_SPLIT: return 3;
+    case TV_SPLIT: return 4;
+    default:       return -1;
+    }
+}
+
+FASTSplitPredictor::SplitType FASTSplitPredictor::xIndexToSplit(int idx)
+{
+    if (idx >= 0 && idx < NUM_MODELS)
+        return MODEL_SPLITS[idx];
+    return NO_SPLIT;
 }
 
 int FASTSplitPredictor::xLoadBooster(const std::string& path, void* handle)

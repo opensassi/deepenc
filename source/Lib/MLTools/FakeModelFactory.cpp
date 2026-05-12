@@ -3,6 +3,7 @@
 */
 
 #include "FakeModelFactory.h"
+#include "CUFeatureExtractor.h"
 
 #include <cstdio>
 #include <fstream>
@@ -83,7 +84,7 @@ int FakeModelFactory::writeAllDummyModels(const std::string& outputDir,
     for (int i = 0; i < 5; ++i)
     {
         std::string path = outputDir + "/" + MODEL_NAMES[i];
-        if (writeDummyModel(path, 22, constantScore) != 0)
+        if (writeDummyModel(path, CUFeatureExtractor::NUM_FEATURES, constantScore) != 0)
             return -1;
     }
     return 0;

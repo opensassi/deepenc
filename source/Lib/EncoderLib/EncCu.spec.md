@@ -41,6 +41,7 @@ graph TB
 - **Owns**: `IntraSearch`, `InterSearch`, `EncModeCtrl`, `TrQuant`, `RdCost`, `LoopFilter`
 - **Uses**: `CABACWriter`, `RateCtrl`, `Picture`, `CodingStructure`, `UnitPartitioner`
 - **Optional**: `CUFeatureExtractor`, `FASTSplitPredictor` (from `MLTools`, conditional on `VVENC_ENABLE_ML_LIGHTGBM`)
+- **Config**: `mlEnable`, `mlThNs` (no-skip threshold, default 0.25), `mlTopK` (candidates, default 3), `mlModelDir`
 
 ## 5) Data Flow
 
@@ -53,6 +54,7 @@ sequenceDiagram
     participant EncModeCtrl
     participant CUFeatureExtractor
     participant FASTSplitPredictor
+    participant Partitioner
 
     EncSlice->>EncCu: encodeCtu(pic, prevQP, ctuX, ctuY)
     EncCu->>EncCu: xCompressCtu()
@@ -67,17 +69,32 @@ sequenceDiagram
         end
         EncCu->>EncCu: xCheckBestMode()
     end
-    opt ML dual-path enabled
+    opt ML dual-path enabled (Taabane 2024 Algorithm 1)
         EncCu->>CUFeatureExtractor: extract(cu, partitioner)
-        CUFeatureExtractor-->>EncCu: feature vector
-        EncCu->>FASTSplitPredictor: predict(features, threshold)
-        alt confidence >= threshold
-            FASTSplitPredictor-->>EncCu: split type + confidence
-            EncCu->>EncModeCtrl: setMLSkipSplit(true)
-            EncCu->>EncCu: xCheckModeSplit(mlSplit)
-        else confidence < threshold
-            FASTSplitPredictor-->>EncCu: NO_SPLIT
-            Note over EncCu: fall through to RDO split search
+        CUFeatureExtractor-->>EncCu: ~30-element feature vector
+        EncCu->>Partitioner: build allowedSplits bitmask
+        Partitioner-->>EncCu: allowed splits for current geometry
+        EncCu->>FASTSplitPredictor: predict(features, topK=3, thNs=0.25, allowedSplits)
+        alt bEarlySkip == true (max confidence < 0.25)
+            FASTSplitPredictor-->>EncCu: early skip signal
+            Note over EncCu: encode CU without splitting, skip RDO
+        else top-N candidates returned
+            FASTSplitPredictor-->>EncCu: [(split1, conf1), (split2, conf2), (split3, conf3)]
+            loop for each candidate (max 3)
+                EncCu->>Partitioner: canSplit(candidate, tempCS)
+                alt canSplit == true
+                    Partitioner-->>EncCu: valid
+                    EncCu->>EncCu: xCheckModeSplit(candidate, tempCS, bestCS)
+                else invalid for geometry
+                    Partitioner-->>EncCu: skip
+                end
+            end
+            Note over EncCu: RDO picks best among tested candidates
+            alt bestCS->cost < MAX_DOUBLE
+                EncCu->>EncCu: return (skip un-tested splits)
+            else all candidates worse than no-split
+                Note over EncCu: fall through to full RDO search
+            end
         end
     end
     EncCu-->>EncSlice: encoded CTU data
@@ -86,11 +103,15 @@ sequenceDiagram
 ## 6) Configuration
 
 | Field | Source | Effect |
-|---|---|---|
+|---|---|---|---|
 | `VVEncCfg::m_QP` | Encoder config | Base quantization parameter |
 | `VVEncCfg::m_IntraPeriod` | Encoder config | Intra frame refresh period |
 | `VVEncCfg::m_MaxMergeNum` | Encoder config | Maximum merge candidates |
 | `VVEncCfg::m_BiPred` | Encoder config | Enable bi-predictive inter |
+| `VVEncCfg::m_mlEnable` | Encoder config | Enable ML-guided CU split prediction (0/1) |
+| `VVEncCfg::m_mlThNs` | Encoder config | No-skip confidence threshold (default 0.25) |
+| `VVEncCfg::m_mlTopK` | Encoder config | Top-K candidates to evaluate (default 3) |
+| `VVEncCfg::m_mlModelDir` | Encoder config | Path to LightGBM model files |
 | `SPS::maxCuDepth` | Sequence params | Max CU split depth |
 
 ## 7) Lifecycle

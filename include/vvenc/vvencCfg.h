@@ -738,9 +738,11 @@ typedef struct vvenc_config
   bool                m_cfgUnused22;                                                     // TODO: remove unused memory from configuration
   char                m_cfgUnused23[2][VVENC_MAX_STRING_LEN];                            // TODO: remove unused memory from configuration
 
-  // ML-guided encoding (LightGBM)
+  // ML-guided encoding (LightGBM, Taabane 2024)
   int                 m_mlEnable;                      // 0=off, 1=on (default: 0)
-  double              m_mlConfidenceThreshold;         // minimum confidence 0.0-1.0 (default: 0.80)
+  double              m_mlConfidenceThreshold;         // (deprecated) minimum confidence 0.0-1.0 (default: 0.80)
+  double              m_mlThNs;                        // no-skip threshold (default: 0.25). If max(pred) < thNs, CU encodes without splitting
+  int                 m_mlTopK;                        // top-N candidates to evaluate via RDO (default: 3)
   char                m_mlModelDir[VVENC_MAX_STRING_LEN]; // path to model directory
 
   // AI training data generation (VVENC_ENABLE_AI_TRAINING)

@@ -709,9 +709,11 @@ VVENC_DECL void vvenc_config_default(vvenc_config *c )
   memset( c->m_reservedInt8, 0, sizeof(c->m_reservedInt8) );
   memset( c->m_reservedDouble, 0, sizeof(c->m_reservedDouble) );
 
-  // ML-guided encoding defaults
+  // ML-guided encoding defaults (Taabane 2024)
   c->m_mlEnable                     = 0;
   c->m_mlConfidenceThreshold        = 0.80;
+  c->m_mlThNs                       = 0.25;
+  c->m_mlTopK                       = 3;
   memset( c->m_mlModelDir, 0, sizeof(c->m_mlModelDir) );
   memset( c->m_trainingOutputFile, 0, sizeof(c->m_trainingOutputFile) );
   memset( c->m_feedbackOutputFile, 0, sizeof(c->m_feedbackOutputFile) );

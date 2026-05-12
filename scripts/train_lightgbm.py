@@ -20,13 +20,22 @@ from sklearn.model_selection import train_test_split
 
 def train_binary_classifier(X_train, y_train, X_val, y_val, split_name, output_dir):
     """Train a single binary LightGBM classifier for one split type."""
+    neg_count = (y_train == 0).sum()
+    pos_count = (y_train == 1).sum()
+    scale_pos_weight = neg_count / pos_count if pos_count > 0 else 1.0
+    print(f"    pos={pos_count} neg={neg_count} scale_pos_weight={scale_pos_weight:.1f}")
     model = lgb.LGBMClassifier(
         objective="binary",
         metric="binary_logloss",
-        n_estimators=500,
-        num_leaves=128,
-        learning_rate=0.05,
-        early_stopping_rounds=20,
+        n_estimators=1000,
+        num_leaves=255,
+        learning_rate=0.02,
+        early_stopping_rounds=50,
+        scale_pos_weight=scale_pos_weight,
+        min_child_samples=50,
+        min_split_gain=0.0,
+        reg_alpha=0.0,
+        reg_lambda=0.0,
         verbosity=1,
         random_state=42,
     )
@@ -37,7 +46,7 @@ def train_binary_classifier(X_train, y_train, X_val, y_val, split_name, output_d
         eval_metric="binary_logloss",
     )
 
-    out_path = os.path.join(output_dir, f"{split_name}_split_model.txt")
+    out_path = os.path.join(output_dir, f"{split_name.lower()}_split_model.txt")
     model.booster_.save_model(out_path)
     print(f"  Saved {out_path}  (best iteration: {model.best_iteration_})")
 
@@ -58,8 +67,9 @@ def main():
     df_val = pd.read_csv(args.val)
 
     # The label column is named 'best_split'
-    # All other columns are features
-    feature_cols = [c for c in df_train.columns if c != "best_split"]
+    # Drop frame/position metadata — not available at encode time
+    exclude = {"best_split", "poc", "ctu_x", "ctu_y"}
+    feature_cols = [c for c in df_train.columns if c not in exclude]
 
     X_train = df_train[feature_cols]
     y_train = df_train["best_split"]
@@ -83,9 +93,9 @@ def main():
 
     print(f"\nAll models saved to {args.output_dir}/")
     for name in split_types:
-        path = os.path.join(args.output_dir, f"{name}_split_model.txt")
+        path = os.path.join(args.output_dir, f"{name.lower()}_split_model.txt")
         size_kb = os.path.getsize(path) / 1024
-        print(f"  {name}_split_model.txt  ({size_kb:.1f} KB)")
+        print(f"  {name.lower()}_split_model.txt  ({size_kb:.1f} KB)")
 
 
 if __name__ == "__main__":

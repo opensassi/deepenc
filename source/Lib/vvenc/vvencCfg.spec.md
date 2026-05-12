@@ -111,9 +111,11 @@ typedef struct vvenc_config {
   // loop filter, SAO, ALF, MCTF, SIMD, tiles, slices, SEIs, 
   // chroma QP mapping, reshaping, merge candidates, IBC, etc.)
 
-  // ML-guided encoding (LightGBM)
+  // ML-guided encoding (LightGBM, Taabane 2024)
   int                   m_mlEnable;                  // 0=off, 1=on (default: 0)
-  double                m_mlConfidenceThreshold;     // minimum confidence 0.0-1.0 (default: 0.80)
+  double                m_mlConfidenceThreshold;     // (deprecated) minimum confidence 0.0-1.0 (default: 0.80)
+  double                m_mlThNs;                    // no-skip threshold (default: 0.25). If max(pred) < thNs, CU is encoded without split.
+  int                   m_mlTopK;                    // top-N candidates to evaluate via RDO (default: 3)
   char                  m_mlModelDir[VVENC_MAX_STRING_LEN]; // path to model directory
 
   // AI training data generation (VVENC_ENABLE_AI_TRAINING)
@@ -245,7 +247,7 @@ No D3 animation — `vvenc_config` is a static data struct populated at startup 
 | `CFG_SET_PARAM` | `vvenc_set_param()` | String-based parameter set for all VVENC_OPT_* macros |
 | `CFG_SET_PARAM_LIST` | `vvenc_set_param_list()` | Argv-style parameter parsing |
 | `CFG_INIT_CONFIG_PARAM` | `vvenc_init_config_parameter()` | Auto-init of dependent parameters (GOP, internal bit depth, etc.) |
-| `CFG_ML_DEFAULTS` | `vvenc_config_default()` | `m_mlEnable=0`, `m_mlConfidenceThreshold=0.80`, `m_mlModelDir=""`, `m_trainingOutputFile=""`, `m_feedbackOutputFile=""` |
+| `CFG_ML_DEFAULTS` | `vvenc_config_default()` | `m_mlEnable=0`, `m_mlConfidenceThreshold=0.80`, `m_mlThNs=0.25`, `m_mlTopK=3`, `m_mlModelDir=""`, `m_trainingOutputFile=""`, `m_feedbackOutputFile=""` |
 | `CFG_LOGGING_CB` | `vvenc_set_msg_callback()` | Callback registered and fired on log |
 | `CFG_CONFIG_STRING` | `vvenc_get_config_as_string()` | Non-empty config string returned |
 | `CFG_GOP_ENTRY` | `vvenc_GOPEntry_default()` | GOPEntry defaults valid |

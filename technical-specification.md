@@ -6,6 +6,8 @@ HAS_SUB_MODULES=true
 
 deepenc is a fork of [VVenC](https://github.com/fraunhoferhhi/vvenc) (Fraunhofer Versatile Video Encoder) that integrates AI-driven kernel optimization capabilities. This document describes the modifications and instrumentation added to the VVenC C/C++ source code.
 
+The ML-guided CU partitioning module follows the approach of **Taabane et al. (IEEE Access, 2024)** — see `deepenc-harness/technical-specification.md` for the full reference and `source/Lib/MLTools/` specs for implementation details.
+
 ## Scope
 
 This specification covers the deepenc source fork only. The harness tooling (trace generation, optimization agent, test pyramid, etc.) is specified in `deepenc-harness/technical-specification.md`.

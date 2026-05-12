@@ -1019,10 +1019,11 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
             if (s_vvencTrainingCsv.is_open())
             {
                 s_vvencTrainingCsv << "poc,ctu_x,ctu_y,"
-                                   << "var_luma,grad_mag,edge_strength,dc,ac_energy,lf_ratio,"
+                                   << "var_luma,grad_hor,grad_ver,edge_strength,dc,ac_energy,lf_ratio,"
+                                   << "sctc_qt,sctc_bh,sctc_bv,sctc_th,sctc_tv,"
                                    << "left_depth,top_depth,tl_depth,left_mode,top_mode,tl_mode,"
-                                   << "log2_size,depth,qp,"
-                                   << "mv_mag,mv_diff_left,mv_diff_top,merge_cost,ref_idx,"
+                                   << "log2_size,qt_depth,mtt_depth,qp,temporal_layer,"
+                                   << "mv_var_h,mv_var_v,mv_diff_left,mv_diff_top,merge_cost,ref_idx,"
                                    << "sad,coeff_count,"
                                    << "best_split\n";
             }
@@ -1044,7 +1045,7 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
             vvencCu.rootCbf = false;
             CUFeatureExtractor vvencExtractor;
             int vvencRet = vvencExtractor.extract(vvencCu, partitioner, vvencPreFeatures);
-            if (vvencRet != 0 || vvencPreFeatures.size() != 22) vvencPreFeatures.clear();
+            if (vvencRet != 0) vvencPreFeatures.clear();
             else {
                 vvencPrePoc = tempCS->slice->poc;
                 vvencPreCtuX = partitioner.currArea().Y().x;
@@ -1054,39 +1055,57 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     }
 #endif
     //////////////////////////////////////////////////////////////////////////
-    // ML-guided split prediction (LightGBM dual-path)
+    // ML-guided split prediction (Taabane 2024 Algorithm 1 — Top-N candidates)
 #if VVENC_ENABLE_ML_LIGHTGBM
     FASTSplitPredictor* mlPredictor = FASTSplitPredictor::getInstance();
     if (mlPredictor && m_pcEncCfg->m_mlEnable && mlPredictor->isInitialized())
     {
         CUFeatureExtractor extractor;
         std::vector<double> features;
-        int ret = extractor.extract(*tempCS->getCU(partitioner.chType, partitioner.treeType),
-                                     partitioner, features);
+        const CodingUnit* mlCu = tempCS->getCU(partitioner.chType, partitioner.treeType);
+        int ret = (mlCu) ? extractor.extract(*mlCu, partitioner, features) : -1;
         if (ret == 0 && features.size() > 0)
         {
-            FASTSplitPredictor::SplitType mlSplit;
-            double confidence = 0.0;
-            ret = mlPredictor->predict(features,
-                                          m_pcEncCfg->m_mlConfidenceThreshold,
-                                          mlSplit, confidence);
-            vvencMlPred = mlSplit;
-            vvencMlPredValid = true;
-            if (ret == 0 && mlSplit != FASTSplitPredictor::NO_SPLIT)
+            // Build allowedSplits bitmask from partitioner geometry
+            unsigned int allowedMask = 0;
+            auto trySplit = [&](FASTSplitPredictor::SplitType st, PartSplit ps) {
+                if (partitioner.canSplit(ps, *tempCS))
+                    allowedMask |= (1u << static_cast<unsigned int>(st));
+            };
+            trySplit(FASTSplitPredictor::QT_SPLIT, CU_QUAD_SPLIT);
+            trySplit(FASTSplitPredictor::BH_SPLIT, CU_HORZ_SPLIT);
+            trySplit(FASTSplitPredictor::BV_SPLIT, CU_VERT_SPLIT);
+            trySplit(FASTSplitPredictor::TH_SPLIT, CU_TRIH_SPLIT);
+            trySplit(FASTSplitPredictor::TV_SPLIT, CU_TRIV_SPLIT);
+
+            // Top-N prediction
+            int topK = std::max(1, m_pcEncCfg->m_mlTopK);
+            double thNs = m_pcEncCfg->m_mlThNs;
+            std::vector<std::pair<FASTSplitPredictor::SplitType, double>> candidates;
+            bool bEarlySkip = false;
+            ret = mlPredictor->predict(features, topK, thNs, allowedMask, candidates, bEarlySkip);
+
+            if (ret == 0 && bEarlySkip)
             {
+                // max prediction below no-skip threshold: skip split modes
                 m_modeCtrl.setMLSkipSplit(true);
-                PartSplit partSplit = CU_DONT_SPLIT;
-                switch (mlSplit)
+            }
+
+            if (ret == 0 && !candidates.empty())
+            {
+                vvencMlPred = candidates[0].first;
+                vvencMlPredValid = true;
+                bool anyValidSplit = false;
+
+                for (const auto& cand : candidates)
                 {
-                case FASTSplitPredictor::QT_SPLIT: partSplit = CU_QUAD_SPLIT; break;
-                case FASTSplitPredictor::BH_SPLIT: partSplit = CU_HORZ_SPLIT; break;
-                case FASTSplitPredictor::BV_SPLIT: partSplit = CU_VERT_SPLIT; break;
-                case FASTSplitPredictor::TH_SPLIT: partSplit = CU_TRIH_SPLIT; break;
-                case FASTSplitPredictor::TV_SPLIT: partSplit = CU_TRIV_SPLIT; break;
-                default: break;
-                }
-                if (partSplit != CU_DONT_SPLIT)
-                {
+                    PartSplit partSplit = static_cast<PartSplit>(
+                        FASTSplitPredictor::splitTypeToPartSplit(cand.first));
+                    if (partSplit >= CU_DONT_SPLIT)
+                        continue;
+                    if (!partitioner.canSplit(partSplit, *tempCS))
+                        continue;
+
                     EncTestMode mlMode;
                     switch (partSplit)
                     {
@@ -1099,12 +1118,19 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
                     }
                     if (mlMode.type != ETM_INVALID)
                     {
+                        m_modeCtrl.setMLSkipSplit(true);
+                        anyValidSplit = true;
                         xCheckModeSplit(tempCS, bestCS, partitioner, mlMode);
 #if !VVENC_ENABLE_AI_TRAINING
                         if (bestCS->cost < MAX_DOUBLE)
                             return;
 #endif
                     }
+                }
+
+                if (anyValidSplit)
+                {
+                    // All candidates tested, none beat no-split — fall through
                 }
             }
         }
@@ -1221,13 +1247,14 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
           s_vvencFeedbackCsvOpenAttempted = true;
           if (s_vvencFeedbackCsv.is_open())
           {
-              s_vvencFeedbackCsv << "poc,ctu_x,ctu_y,"
-                                 << "var_luma,grad_mag,edge_strength,dc,ac_energy,lf_ratio,"
-                                 << "left_depth,top_depth,tl_depth,left_mode,top_mode,tl_mode,"
-                                 << "log2_size,depth,qp,"
-                                 << "mv_mag,mv_diff_left,mv_diff_top,merge_cost,ref_idx,"
-                                 << "sad,coeff_count,"
-                                 << "ml_prediction,best_split\n";
+               s_vvencFeedbackCsv << "poc,ctu_x,ctu_y,"
+                                  << "var_luma,grad_hor,grad_ver,edge_strength,dc,ac_energy,lf_ratio,"
+                                  << "sctc_qt,sctc_bh,sctc_bv,sctc_th,sctc_tv,"
+                                  << "left_depth,top_depth,tl_depth,left_mode,top_mode,tl_mode,"
+                                  << "log2_size,qt_depth,mtt_depth,qp,temporal_layer,"
+                                  << "mv_var_h,mv_var_v,mv_diff_left,mv_diff_top,merge_cost,ref_idx,"
+                                  << "sad,coeff_count,"
+                                  << "ml_prediction,best_split\n";
           }
       }
       if (s_vvencFeedbackCsv.is_open())

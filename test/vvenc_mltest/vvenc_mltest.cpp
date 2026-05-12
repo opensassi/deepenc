@@ -124,11 +124,11 @@ static int testFASTSplitPredictor_loadAndPredict()
         return 1;
     }
 
-    std::vector<double> features(22, 0.0);
-    vvenc::FASTSplitPredictor::SplitType split;
-    double confidence = 0.0;
+    std::vector<double> features(vvenc::CUFeatureExtractor::NUM_FEATURES, 0.0);
+    std::vector<std::pair<vvenc::FASTSplitPredictor::SplitType, double>> candidates;
+    bool bEarlySkip = false;
 
-    ret = predictor.predict(features, 0.3, split, confidence);
+    ret = predictor.predict(features, 3, 0.3, 0x1F, candidates, bEarlySkip);
     if (ret != 0)
     {
         std::cerr << "FAIL: predict returned " << ret << std::endl;
@@ -136,17 +136,16 @@ static int testFASTSplitPredictor_loadAndPredict()
     }
 
     // Dummy models have leaf_value=0.0 → sigmoid(0.0) = 0.5
-    // Threshold 0.3 < 0.5 → should return a split
-    if (split == vvenc::FASTSplitPredictor::NO_SPLIT)
+    // thNs=0.3 < 0.5 → should NOT early-skip and return candidates
+    if (bEarlySkip)
     {
-        std::cerr << "FAIL: expected non-NO_SPLIT for conf=0.5 >= thresh=0.3, got NO_SPLIT" << std::endl;
+        std::cerr << "FAIL: expected no early skip for thNs=0.3 < 0.5, got earlySkip=true" << std::endl;
         return 1;
     }
 
-    // sigmoid(0.0) = 0.5 exactly
-    if (confidence < 0.49 || confidence > 0.51)
+    if (candidates.empty())
     {
-        std::cerr << "FAIL: expected confidence ~0.5, got " << confidence << std::endl;
+        std::cerr << "FAIL: expected at least 1 candidate for thNs=0.3" << std::endl;
         return 1;
     }
 
@@ -169,21 +168,21 @@ static int testFASTSplitPredictor_belowThreshold()
         }
     }
 
-    std::vector<double> features(22, 0.0);
-    vvenc::FASTSplitPredictor::SplitType split;
-    double confidence = 0.0;
+    std::vector<double> features(vvenc::CUFeatureExtractor::NUM_FEATURES, 0.0);
+    std::vector<std::pair<vvenc::FASTSplitPredictor::SplitType, double>> candidates;
+    bool bEarlySkip = false;
 
-    // threshold 0.9 > model output 0.5 → should return NO_SPLIT
-    ret = predictor.predict(features, 0.9, split, confidence);
+    // thNs=0.9 > model output 0.5 → should early-skip
+    ret = predictor.predict(features, 3, 0.9, 0x1F, candidates, bEarlySkip);
     if (ret != 0)
     {
         std::cerr << "FAIL: predict returned " << ret << std::endl;
         return 1;
     }
 
-    if (split != vvenc::FASTSplitPredictor::NO_SPLIT)
+    if (!bEarlySkip)
     {
-        std::cerr << "FAIL: expected NO_SPLIT for conf=0.5 < thresh=0.9" << std::endl;
+        std::cerr << "FAIL: expected earlySkip for thNs=0.9 > 0.5" << std::endl;
         return 1;
     }
 
@@ -195,11 +194,11 @@ static int testFASTSplitPredictor_predictWithoutInit()
 {
     vvenc::FASTSplitPredictor predictor;
 
-    std::vector<double> features(22, 0.0);
-    vvenc::FASTSplitPredictor::SplitType split;
-    double confidence = 0.0;
+    std::vector<double> features(vvenc::CUFeatureExtractor::NUM_FEATURES, 0.0);
+    std::vector<std::pair<vvenc::FASTSplitPredictor::SplitType, double>> candidates;
+    bool bEarlySkip = false;
 
-    int ret = predictor.predict(features, 0.5, split, confidence);
+    int ret = predictor.predict(features, 3, 0.5, 0x1F, candidates, bEarlySkip);
     if (ret == 0)
     {
         std::cerr << "FAIL: expected error for predict() without init()" << std::endl;
@@ -267,9 +266,9 @@ static int testCUFeatureExtractor_defaultFeatures()
 {
     // We can't easily construct a real CodingUnit without the full encoder context,
     // but we can verify the static feature count constant.
-    if (vvenc::CUFeatureExtractor::NUM_FEATURES != 22)
+    if (vvenc::CUFeatureExtractor::NUM_FEATURES != 31)
     {
-        std::cerr << "FAIL: expected NUM_FEATURES=22, got "
+        std::cerr << "FAIL: expected NUM_FEATURES=31, got "
                   << vvenc::CUFeatureExtractor::NUM_FEATURES << std::endl;
         return 1;
     }
