@@ -67,6 +67,115 @@ The D3 filmstrip requires `window.ANIMATION_KEYFRAMES` (array of `{time, label}`
 
 CRITICAL: Before any development work, load the `git` skill via the skill tool and follow its commands. Always develop directly against `main` with a rebase workflow. At the end of every session, run `finish session` which orchestrates commit → rebase → tests → evaluation → push.
 
+# GDB Debugger MCP — Headless Debugging for C++
+
+The GDB debugger MCP is provided by `gdb-mcp-server` (Ipiano/gdb-mcp), a Python-based MCP server using
+the GDB/MI protocol. Unlike GDB-only tools with `OsString` serialization bugs, this server accepts
+`args` as a plain `list[str]` and supports `env` dicts and `init_commands`.
+
+## Config
+
+The debugger is configured in `.opencode/opencode.json`:
+
+```json
+"debugger": {
+  "type": "local",
+  "command": ["gdb-mcp-server"],
+  "enabled": true
+}
+```
+
+## Available tools
+
+| Tool | Purpose |
+|---|---|
+| `gdb_start_session` | Start a session with `program`, `args` (list), `env` (dict), `core`, `init_commands` |
+| `gdb_execute_command` | Run any GDB command (CLI or MI) |
+| `gdb_get_backtrace` | Stack trace for a thread |
+| `gdb_get_variables` | Local variables for a frame |
+| `gdb_get_registers` / `gdb_get_threads` | Register / thread inspection |
+| `gdb_set_breakpoint` / `gdb_list_breakpoints` / `gdb_delete_breakpoint` | Breakpoint management |
+| `gdb_continue` / `gdb_step` / `gdb_next` / `gdb_interrupt` | Execution control |
+| `gdb_evaluate_expression` | Evaluate a C/C++ expression |
+| `gdb_call_function` | Call a function in the target process |
+| `gdb_get_status` / `gdb_stop_session` | Session lifecycle |
+
+## Usage in prompts
+
+Use `gdb_start_session` with the program, args, and env:
+
+```
+gdb_start_session
+  program: ./bin/debug-static/vvencapp
+  args: ["-i", "test/data/park_joy.yuv", "-s", "832x480", "-f", "50", "--preset", "fast", "--qp", "22", "--frames", "2", "-o", "/dev/null"]
+  env: {"VVENC_TRAINING_OUT": "/tmp/train.csv"}
+```
+
+## When to use the debugger
+
+### 1. Config propagation failure
+
+When a value set in `vvencimpl.cpp::init()` is not visible downstream:
+
+- Set breakpoints at the setting site and the consumption site
+- Check struct field values with `gdb_evaluate_expression`
+- Example: `m_trainingOutputFile` set after `initEncoderLib()` doesn't propagate
+
+### 2. Segfault / uninitialized memory
+
+When the encoder crashes inside a C++ function:
+
+```
+gdb_start_session program: ./bin/debug-static/vvencapp args: [...]
+gdb_set_breakpoint location: "EncCu.cpp:996"
+gdb_continue
+gdb_get_backtrace
+```
+
+- Garbage pointers look like `0x3ff15c28f5c28f5c` (floating-point NaN bit pattern)
+- Null pointers are `0x0`
+- Get the full backtrace with `gdb_get_backtrace`
+- Inspect locals with `gdb_get_variables`
+
+### 3. CU lifecycle / data flow
+
+When a data structure has unexpected state:
+
+- Set breakpoints at multiple points in the same function
+- Use `gdb_evaluate_expression` to inspect pointer chains
+- Compare values between pre-split and post-split execution points
+
+### 4. Thread safety
+
+When output data is corrupted from concurrent writes:
+
+- Check if static/global variables are accessed from multiple threads
+- Use `gdb_get_threads` to list active threads
+- Set breakpoints and check which thread hits them
+
+## Session lifecycle
+
+1. **Start** → `gdb_start_session` (loads program, sets env)
+2. **Run** → `gdb_continue` or `gdb_execute_command` with `"run"`
+3. **Inspect** → `gdb_get_backtrace`, `gdb_get_variables`, `gdb_evaluate_expression`
+4. **Stop** → `gdb_stop_session`
+
+If the program is running and not hitting a breakpoint, use `gdb_interrupt` to pause it.
+
+## Build prerequisites
+
+Debug builds require `-DCMAKE_BUILD_TYPE=Debug`:
+
+```bash
+cmake -B build_debug -S . \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DVVENC_ENABLE_ML_LIGHTGBM=ON \
+  -DVVENC_ENABLE_AI_TRAINING=ON \
+  -DLightGBM_LIBRARY=/usr/local/lib/lib_lightgbm.so \
+  -DLightGBM_INCLUDE_DIR=/usr/local/include
+cmake --build build_debug -j$(nproc) --target vvencapp
+```
+
 # Dev Environment Setup
 
 ## GitHub CLI (for the `issue` skill)

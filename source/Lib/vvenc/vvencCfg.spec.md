@@ -116,6 +116,12 @@ typedef struct vvenc_config {
   double                m_mlConfidenceThreshold;     // minimum confidence 0.0-1.0 (default: 0.80)
   char                  m_mlModelDir[VVENC_MAX_STRING_LEN]; // path to model directory
 
+  // AI training data generation (VVENC_ENABLE_AI_TRAINING)
+  char                  m_trainingOutputFile[VVENC_MAX_STRING_LEN]; // VVENC_TRAINING_OUT CSV path
+
+  // ML feedback (VVENC_ENABLE_ML_LIGHTGBM)
+  char                  m_feedbackOutputFile[VVENC_MAX_STRING_LEN]; // VVENC_ML_FEEDBACK CSV path
+
   // State variables
   bool                  m_configDone;
   bool                  m_confirmFailed;
@@ -239,7 +245,7 @@ No D3 animation — `vvenc_config` is a static data struct populated at startup 
 | `CFG_SET_PARAM` | `vvenc_set_param()` | String-based parameter set for all VVENC_OPT_* macros |
 | `CFG_SET_PARAM_LIST` | `vvenc_set_param_list()` | Argv-style parameter parsing |
 | `CFG_INIT_CONFIG_PARAM` | `vvenc_init_config_parameter()` | Auto-init of dependent parameters (GOP, internal bit depth, etc.) |
-| `CFG_ML_DEFAULTS` | `vvenc_config_default()` | `m_mlEnable=0`, `m_mlConfidenceThreshold=0.80`, `m_mlModelDir=""` |
+| `CFG_ML_DEFAULTS` | `vvenc_config_default()` | `m_mlEnable=0`, `m_mlConfidenceThreshold=0.80`, `m_mlModelDir=""`, `m_trainingOutputFile=""`, `m_feedbackOutputFile=""` |
 | `CFG_LOGGING_CB` | `vvenc_set_msg_callback()` | Callback registered and fired on log |
 | `CFG_CONFIG_STRING` | `vvenc_get_config_as_string()` | Non-empty config string returned |
 | `CFG_GOP_ENTRY` | `vvenc_GOPEntry_default()` | GOPEntry defaults valid |

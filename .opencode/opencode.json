@@ -17,7 +17,7 @@
     },
     "debugger": {
       "type": "local",
-      "command": ["/home/pc/.local/bin/mcp-server-gdb"],
+      "command": ["gdb-mcp-server"],
       "enabled": true
     }
   }

@@ -23,7 +23,7 @@ find_path( LightGBM_INCLUDE_DIR
 # won't match NAMES="lightgbm" because it would look for liblightgbm.so).
 # Check known pip-installed locations directly.
 find_library( LightGBM_LIBRARY
-    NAMES lightgbm liblightgbm
+    NAMES lightgbm liblightgbm lib_lightgbm
     PATHS
         /usr/lib
         /usr/lib/x86_64-linux-gnu
@@ -34,6 +34,7 @@ find_library( LightGBM_LIBRARY
 if( NOT LightGBM_LIBRARY )
     foreach( _libpath
         "/home/pc/lib/python3.12/site-packages/lightgbm/lib/lib_lightgbm.so"
+        "/usr/local/lib/lib_lightgbm.so"
     )
         if( EXISTS "${_libpath}" )
             get_filename_component( _libdir "${_libpath}" DIRECTORY )

@@ -213,6 +213,9 @@ set( VVENC_ENABLE_THIRDPARTY_JSON           ON  CACHE STRING "Enable use of thir
 # ML-guided encoding via LightGBM
 set( VVENC_ENABLE_ML_LIGHTGBM               OFF CACHE BOOL "Enable ML-guided CU split decisions via LightGBM" )
 
+# Training data generation via VVENC_TRAINING_OUT env var
+set( VVENC_ENABLE_AI_TRAINING               OFF CACHE BOOL "Enable per-CU training feature dump for LightGBM data generation" )
+
 set_property( CACHE VVENC_ENABLE_THIRDPARTY_JSON PROPERTY STRINGS OFF SYSTEM ON )
 
 set( VVENC_INSTALL_FULLFEATURE_APP          OFF CACHE BOOL   "Install the full-feature app: vvencFFapp" )
@@ -437,6 +440,17 @@ if( VVENC_ENABLE_ML_LIGHTGBM )
     add_compile_definitions( VVENC_ENABLE_ML_LIGHTGBM=1 )
 else()
     message( STATUS "VVENC_ENABLE_ML_LIGHTGBM: OFF" )
+endif()
+
+# handle AI training data generation
+if( VVENC_ENABLE_AI_TRAINING )
+    if( NOT VVENC_ENABLE_ML_LIGHTGBM )
+        message( FATAL_ERROR "VVENC_ENABLE_AI_TRAINING requires VVENC_ENABLE_ML_LIGHTGBM=ON (shares CUFeatureExtractor)" )
+    endif()
+    message( STATUS "VVENC_ENABLE_AI_TRAINING: ON" )
+    add_compile_definitions( VVENC_ENABLE_AI_TRAINING=1 )
+else()
+    message( STATUS "VVENC_ENABLE_AI_TRAINING: OFF" )
 endif()
 
 # handle rpath correctly

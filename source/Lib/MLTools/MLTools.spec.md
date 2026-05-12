@@ -1,14 +1,16 @@
-# MLTools — Machine Learning Inference Module
+# MLTools — Machine Learning Inference & Training Data Generation Module
 
 ## 1. Overview
 
 MLTools provides the LightGBM-based CU split prediction infrastructure for the deepenc AI-accelerated encoder. It implements dual-path CU partitioning: AI inference for fast split decisions with RDO fallback when confidence is low.
 
-**Conditional compilation**: All ML paths are gated by `#if VVENC_ENABLE_ML_LIGHTGBM`. When disabled, the module compiles to empty stubs with zero codegen impact on the encoder.
+**Conditional compilation**: Inference paths are gated by `#if VVENC_ENABLE_ML_LIGHTGBM`. Training data generation paths are gated by `#if VVENC_ENABLE_AI_TRAINING` (requires `VVENC_ENABLE_ML_LIGHTGBM` to share `CUFeatureExtractor`). When both are disabled, the module compiles to empty stubs with zero codegen impact on the encoder.
 
-**Dependencies**: `LightGBM::LightGBM` (C API: `LightGBM/c_api.h`), `CommonLib` (CodingUnit, Partitioner data types).
+**Dependencies**: `LightGBM::LightGBM` (C API: `LightGBM/c_api.h`) required for inference only. `CommonLib` (CodingUnit, Partitioner data types) required for both inference and training.
 
-**Lifecycle**: Models loaded once at encoder init (`FASTSplitPredictor::init()` → modelDir), invoked per-CU during `xCompressCU()` in `EncCu`, released at encoder shutdown.
+**Lifecycle (inference)**: Models loaded once at encoder init (`FASTSplitPredictor::init()` → modelDir), invoked per-CU during `xCompressCU()` in `EncCu`, released at encoder shutdown.
+
+**Lifecycle (training data)**: Activated by `VVENC_TRAINING_OUT` env var at encoder init. One CSV row is written per CU during `xCompressCU()` after exhaustive RDO, recording 22 features + ground-truth split label. The CSV is flushed per-encode and closed at encoder shutdown.
 
 ## 2. Component Specifications
 
@@ -28,8 +30,8 @@ MLTools provides the LightGBM-based CU split prediction infrastructure for the d
 ```mermaid
 graph TB
     subgraph MLTools
-        FSP[FASTSplitPredictor<br/>model loading + inference]
         CFE[CUFeatureExtractor<br/>feature extraction]
+        FSP[FASTSplitPredictor<br/>model loading + inference]
         FMF[FakeModelFactory<br/>test model generation]
     end
 
@@ -41,6 +43,7 @@ graph TB
     subgraph External
         ModelFiles[q&amp;t_split_model.txt<br/>bh_split_model.txt<br/>bv_split_model.txt<br/>th_split_model.txt<br/>tv_split_model.txt]
         LightGBM[lib_lightgbm<br/>LightGBM C API]
+        TrainingCSV[training_data.csv<br/>per-CU features + label]
     end
 
     ModelFiles -->|LGBM_BoosterCreateFromModelfile| FSP
@@ -49,9 +52,14 @@ graph TB
     CFE -->|feature vector| FSP
     FSP -->|split decision + confidence| EncCu
     FSP -->|ML-skip flag| EncModeCtrl
+
+    CFE -.->|VVENC_ENABLE_AI_TRAINING| TrainingCSV
+    EncCu -.->|ground-truth split label| TrainingCSV
 ```
 
 ## 4. Detailed Data Flow
+
+### 4.1 Inference Path (VVENC_ENABLE_ML_LIGHTGBM)
 
 ```mermaid
 sequenceDiagram
@@ -88,6 +96,32 @@ sequenceDiagram
     end
 ```
 
+### 4.2 Training Data Path (VVENC_ENABLE_AI_TRAINING)
+
+```mermaid
+sequenceDiagram
+    participant EncCu
+    participant CUFeatureExtractor
+    participant CSV as training_data.csv
+    participant VVEncImpl as VVEncImpl (init/uninit)
+
+    Note over VVEncImpl: At init(): getenv(VVENC_TRAINING_OUT)
+    VVEncImpl->>VVEncImpl: read env var, store path in m_trainingOutputFile
+
+    Note over EncCu: Inside xCompressCU() before split testing
+    EncCu->>CUFeatureExtractor: extract(cu, partitioner)
+    CUFeatureExtractor-->>EncCu: 22-element feature vector
+
+    Note over EncCu: Full exhaustive RDO runs (ML shortcut skipped)
+
+    Note over EncCu: After RDO, best CS is known
+    EncCu->>EncCu: infer split label from bestCS geometry
+    EncCu->>CSV: write(features[22] + splitLabel)
+
+    Note over VVEncImpl: At uninit():
+    VVEncImpl->>CSV: close file
+```
+
 ## 5. Visualisation
 
 Covered by the root `technical-specification.md` D3 animation, which includes an MLTools sub-panel showing model load state, confidence threshold, per-CU predictions, and split acceptance rate.
@@ -119,17 +153,50 @@ Covered by the root `technical-specification.md` D3 animation, which includes an
 | `release()` after `release()` | No crash, returns error |
 | `init()` after `release()` | Can re-initialise |
 
+### AI Training Data Tests (VVENC_ENABLE_AI_TRAINING)
+
+| Test ID | What to Verify |
+|---------|---------------|
+| `TRAINING_CSV_HEADER` | CSV produced with `VVENC_TRAINING_OUT` has correct header columns |
+| `TRAINING_CSV_ROWS` | CSV has expected number of rows (one per CU decision point) |
+| `TRAINING_CSV_FEATURE_COUNT` | Each row has 22 feature values + split label |
+| `TRAINING_CSV_LABELS` | Split labels are valid: NO_SPLIT, QT, BH, BV, TH, TV |
+| `TRAINING_NO_ENV` | Without `VVENC_TRAINING_OUT`, no CSV is produced and no overhead incurred |
+
 ### Integration Tests
 
 - Full encode with ML enabled (dummy models): encode 16 frames without crash
 - Full encode with ML enabled and `--ml-confidence 1.0`: behaves identically to RDO-only (all predictions rejected)
 - Encode with `VVENC_ENABLE_ML_LIGHTGBM=OFF`: binary identical to unmodified VVenC
+- Full encode with `VVENC_TRAINING_OUT=/tmp/train.csv`: produces valid CSV, no crash
 
 ## 7. CLI Entry Point
 
 No direct CLI. MLTools is loaded by `EncLib` → `EncCu` at encoder initialisation. Configuration is provided through the `vvenc_config` struct:
+
+### Inference Configuration
 - `mlEnable` (int): 0=off, 1=on
 - `mlConfidenceThreshold` (double): default 0.80
 - `mlModelDir` (const char*): path to directory containing split model files
 
-These are set via `vvenc_set_param(cfg, "ml-enable", "1")` or `vvencapp --ml-model-dir ./models --ml-confidence 0.80`.
+Set via `vvenc_set_param(cfg, "ml-enable", "1")` or `vvencapp --ml-model-dir ./models --ml-confidence 0.80`.
+
+### Training Data Configuration
+- `trainingOutputFile` (char[]): path for CSV output, set automatically by the `deepenc-harness` CLI from the `VVENC_TRAINING_OUT` environment variable
+
+Activated by running with:
+```bash
+VVENC_TRAINING_OUT=training_data.csv ./vvencapp [encode options]
+```
+
+The `deepenc-harness ml data-generate` command sets this env var automatically per clip × QP combination.
+
+### Feedback Data Configuration
+- `feedbackOutputFile` (char[]): path for misprediction CSV output, set automatically by the `deepenc-harness` CLI from the `VVENC_ML_FEEDBACK` environment variable (gated by `VVENC_ENABLE_ML_LIGHTGBM`)
+
+Activated by running with:
+```bash
+VVENC_ML_FEEDBACK=ml_feedback.csv ./vvencapp [encode options] --ml-model-dir ./models --ml-confidence 0.80
+```
+
+During encoding, for each CU where the ML-predicted split (confidence >= threshold) differs from the RDO-chosen split, one row is written to the feedback CSV. The `deepenc-harness ml feedback` command sets this env var automatically, then appends mispredictions to the training set and retrains.

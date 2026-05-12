@@ -68,6 +68,20 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <mutex>
 #include <cmath>
 #include <algorithm>
+#include <fstream>
+#include <sstream>
+
+#if VVENC_ENABLE_AI_TRAINING
+static std::ofstream s_vvencTrainingCsv;
+static bool s_vvencTrainingCsvOpenAttempted = false;
+static std::mutex s_vvencTrainingMutex;
+#endif
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+static std::ofstream s_vvencFeedbackCsv;
+static bool s_vvencFeedbackCsvOpenAttempted = false;
+static std::mutex s_vvencFeedbackMutex;
+#endif
 
 //! \ingroup EncoderLib
 //! \{
@@ -723,6 +737,18 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
 {
   const Area& lumaArea = tempCS->area.Y();
 
+#if VVENC_ENABLE_AI_TRAINING
+  std::vector<double> vvencPreFeatures;
+  int vvencPrePoc = 0;
+  int vvencPreCtuX = 0;
+  int vvencPreCtuY = 0;
+#endif
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+  FASTSplitPredictor::SplitType vvencMlPred = FASTSplitPredictor::NO_SPLIT;
+  bool vvencMlPredValid = false;
+#endif
+
   Slice&   slice      = *tempCS->slice;
   const PPS &pps      = *tempCS->pps;
   const SPS &sps      = *tempCS->sps;
@@ -981,6 +1007,53 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
       xCheckFastCuChromaSplitting( tempCS, bestCS, partitioner, *m_modeCtrl.comprCUCtx );
     }
     //////////////////////////////////////////////////////////////////////////
+    // Pre-split training feature extraction (matches inference-time CU features)
+#if VVENC_ENABLE_AI_TRAINING
+    if (m_pcEncCfg->m_trainingOutputFile[0] != 0)
+    {
+        if (!s_vvencTrainingCsvOpenAttempted)
+        {
+            std::lock_guard<std::mutex> vvencLock(s_vvencTrainingMutex);
+            s_vvencTrainingCsv.open(m_pcEncCfg->m_trainingOutputFile);
+            s_vvencTrainingCsvOpenAttempted = true;
+            if (s_vvencTrainingCsv.is_open())
+            {
+                s_vvencTrainingCsv << "poc,ctu_x,ctu_y,"
+                                   << "var_luma,grad_mag,edge_strength,dc,ac_energy,lf_ratio,"
+                                   << "left_depth,top_depth,tl_depth,left_mode,top_mode,tl_mode,"
+                                   << "log2_size,depth,qp,"
+                                   << "mv_mag,mv_diff_left,mv_diff_top,merge_cost,ref_idx,"
+                                   << "sad,coeff_count,"
+                                   << "best_split\n";
+            }
+        }
+        if (s_vvencTrainingCsv.is_open())
+        {
+            tempCS->clearCUs(true);
+            CodingUnit vvencCu(partitioner.currArea());
+            vvencCu.cs = tempCS;
+            vvencCu.slice = tempCS->slice;
+            vvencCu.chType = partitioner.chType;
+            vvencCu.depth = partitioner.currDepth;
+            vvencCu.qp = tempCS->currQP[partitioner.chType];
+            vvencCu.predMode = NUMBER_OF_PREDICTION_MODES;
+            vvencCu.initData();
+            vvencCu.initPuData();
+            vvencCu.firstTU = nullptr;
+            vvencCu.lastTU = nullptr;
+            vvencCu.rootCbf = false;
+            CUFeatureExtractor vvencExtractor;
+            int vvencRet = vvencExtractor.extract(vvencCu, partitioner, vvencPreFeatures);
+            if (vvencRet != 0 || vvencPreFeatures.size() != 22) vvencPreFeatures.clear();
+            else {
+                vvencPrePoc = tempCS->slice->poc;
+                vvencPreCtuX = partitioner.currArea().Y().x;
+                vvencPreCtuY = partitioner.currArea().Y().y;
+            }
+        }
+    }
+#endif
+    //////////////////////////////////////////////////////////////////////////
     // ML-guided split prediction (LightGBM dual-path)
 #if VVENC_ENABLE_ML_LIGHTGBM
     FASTSplitPredictor* mlPredictor = FASTSplitPredictor::getInstance();
@@ -997,6 +1070,8 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
             ret = mlPredictor->predict(features,
                                           m_pcEncCfg->m_mlConfidenceThreshold,
                                           mlSplit, confidence);
+            vvencMlPred = mlSplit;
+            vvencMlPredValid = true;
             if (ret == 0 && mlSplit != FASTSplitPredictor::NO_SPLIT)
             {
                 m_modeCtrl.setMLSkipSplit(true);
@@ -1025,8 +1100,10 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
                     if (mlMode.type != ETM_INVALID)
                     {
                         xCheckModeSplit(tempCS, bestCS, partitioner, mlMode);
+#if !VVENC_ENABLE_AI_TRAINING
                         if (bestCS->cost < MAX_DOUBLE)
                             return;
+#endif
                     }
                 }
             }
@@ -1100,7 +1177,100 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
         xCheckModeSplit( tempCS, bestCS, partitioner, encTestMode );
       }
     }
+
   }
+
+  // Post-split training data write (uses pre-split features + post-split label)
+#if VVENC_ENABLE_AI_TRAINING
+  if (m_pcEncCfg->m_trainingOutputFile[0] != 0 && s_vvencTrainingCsv.is_open() && !vvencPreFeatures.empty())
+  {
+      std::string vvencLabel = "NO_SPLIT";
+      int numSub = (int)bestCS->cus.size();
+      if (numSub >= 4) vvencLabel = "QT";
+      else if (numSub == 3)
+      {
+          if (bestCS->cus[1]->Y().width < partitioner.currArea().Y().width) vvencLabel = "TV";
+          else vvencLabel = "TH";
+      }
+      else if (numSub == 2)
+      {
+          auto& cu0 = *bestCS->cus.front();
+          auto& cu1 = *bestCS->cus.back();
+          if (cu0.Y().pos().x != cu1.Y().pos().x) vvencLabel = "BV";
+          else vvencLabel = "BH";
+      }
+      std::lock_guard<std::mutex> vvencLock(s_vvencTrainingMutex);
+      s_vvencTrainingCsv << vvencPrePoc << "," << vvencPreCtuX << "," << vvencPreCtuY << ",";
+      for (size_t fi = 0; fi < vvencPreFeatures.size(); fi++)
+      {
+          s_vvencTrainingCsv << vvencPreFeatures[fi];
+          if (fi + 1 < vvencPreFeatures.size()) s_vvencTrainingCsv << ",";
+      }
+      s_vvencTrainingCsv << "," << vvencLabel << "\n";
+  }
+#endif
+
+  // Feedback CSV: compare ML prediction vs RDO ground truth
+#if VVENC_ENABLE_ML_LIGHTGBM
+  if (m_pcEncCfg->m_feedbackOutputFile[0] != 0 && vvencMlPredValid)
+  {
+      if (!s_vvencFeedbackCsvOpenAttempted)
+      {
+          std::lock_guard<std::mutex> vvencLock(s_vvencFeedbackMutex);
+          s_vvencFeedbackCsv.open(m_pcEncCfg->m_feedbackOutputFile);
+          s_vvencFeedbackCsvOpenAttempted = true;
+          if (s_vvencFeedbackCsv.is_open())
+          {
+              s_vvencFeedbackCsv << "poc,ctu_x,ctu_y,"
+                                 << "var_luma,grad_mag,edge_strength,dc,ac_energy,lf_ratio,"
+                                 << "left_depth,top_depth,tl_depth,left_mode,top_mode,tl_mode,"
+                                 << "log2_size,depth,qp,"
+                                 << "mv_mag,mv_diff_left,mv_diff_top,merge_cost,ref_idx,"
+                                 << "sad,coeff_count,"
+                                 << "ml_prediction,best_split\n";
+          }
+      }
+      if (s_vvencFeedbackCsv.is_open())
+      {
+          std::string vvencGtLabel = "NO_SPLIT";
+          int numSub = (int)bestCS->cus.size();
+          if (numSub >= 4) vvencGtLabel = "QT";
+          else if (numSub == 3)
+          {
+              if (bestCS->cus[1]->Y().width < partitioner.currArea().Y().width) vvencGtLabel = "TV";
+              else vvencGtLabel = "TH";
+          }
+          else if (numSub == 2)
+          {
+              auto& cu0 = *bestCS->cus.front();
+              auto& cu1 = *bestCS->cus.back();
+              if (cu0.Y().pos().x != cu1.Y().pos().x) vvencGtLabel = "BV";
+              else vvencGtLabel = "BH";
+          }
+          std::string vvencMlLabel = "NO_SPLIT";
+          switch (vvencMlPred)
+          {
+          case FASTSplitPredictor::QT_SPLIT: vvencMlLabel = "QT"; break;
+          case FASTSplitPredictor::BH_SPLIT: vvencMlLabel = "BH"; break;
+          case FASTSplitPredictor::BV_SPLIT: vvencMlLabel = "BV"; break;
+          case FASTSplitPredictor::TH_SPLIT: vvencMlLabel = "TH"; break;
+          case FASTSplitPredictor::TV_SPLIT: vvencMlLabel = "TV"; break;
+          default: break;
+          }
+          if (vvencMlLabel != "NO_SPLIT" && vvencMlLabel != vvencGtLabel)
+          {
+              std::lock_guard<std::mutex> vvencLock(s_vvencFeedbackMutex);
+              s_vvencFeedbackCsv << vvencPrePoc << "," << vvencPreCtuX << "," << vvencPreCtuY << ",";
+              for (size_t fi = 0; fi < vvencPreFeatures.size(); fi++)
+              {
+                  s_vvencFeedbackCsv << vvencPreFeatures[fi];
+                  if (fi + 1 < vvencPreFeatures.size()) s_vvencFeedbackCsv << ",";
+              }
+              s_vvencFeedbackCsv << "," << vvencMlLabel << "," << vvencGtLabel << "\n";
+          }
+      }
+  }
+#endif
 
   if( bestCS->cus.empty() )
   {

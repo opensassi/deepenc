@@ -743,6 +743,12 @@ typedef struct vvenc_config
   double              m_mlConfidenceThreshold;         // minimum confidence 0.0-1.0 (default: 0.80)
   char                m_mlModelDir[VVENC_MAX_STRING_LEN]; // path to model directory
 
+  // AI training data generation (VVENC_ENABLE_AI_TRAINING)
+  char                m_trainingOutputFile[VVENC_MAX_STRING_LEN]; // path for VVENC_TRAINING_OUT CSV output (empty = disabled)
+
+  // ML feedback (VVENC_ENABLE_ML_LIGHTGBM)
+  char                m_feedbackOutputFile[VVENC_MAX_STRING_LEN]; // path for VVENC_ML_FEEDBACK CSV output (empty = disabled)
+
   // trace rules
   bool                m_listTracingChannels;
   char                m_traceRule[VVENC_MAX_STRING_LEN];

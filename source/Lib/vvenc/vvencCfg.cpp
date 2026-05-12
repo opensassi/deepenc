@@ -713,6 +713,8 @@ VVENC_DECL void vvenc_config_default(vvenc_config *c )
   c->m_mlEnable                     = 0;
   c->m_mlConfidenceThreshold        = 0.80;
   memset( c->m_mlModelDir, 0, sizeof(c->m_mlModelDir) );
+  memset( c->m_trainingOutputFile, 0, sizeof(c->m_trainingOutputFile) );
+  memset( c->m_feedbackOutputFile, 0, sizeof(c->m_feedbackOutputFile) );
 
   // init default preset
   vvenc_init_preset( c, vvencPresetMode::VVENC_MEDIUM );

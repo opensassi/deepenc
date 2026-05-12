@@ -65,10 +65,38 @@ enum VVEncInternalState {
 | Method | Description |
 |---|---|
 | `xGetAccessUnitsSize(const AccessUnitList&)` | Sum NAL unit sizes with Annex-B overhead |
+
+### 2.5 Training Data Generation (VVENC_ENABLE_AI_TRAINING)
+
+When compiled with `VVENC_ENABLE_AI_TRAINING=ON`, `VVEncImpl` reads the `VVENC_TRAINING_OUT` environment variable during `init()` and stores the path in `m_cVVEncCfg.m_trainingOutputFile`. If set, `EncCu` writes one CSV row per CU decision point during `xCompressCU()`, containing:
+
+- **Position**: `poc`, `ctu_x`, `ctu_y`
+- **22 features** (from `CUFeatureExtractor`): variance, gradient, edge strength, DC, AC, neighbor depths, modes, log2 size, QP, MV stats, SAD, coefficient count
+- **Label**: ground-truth optimal split type (`NO_SPLIT`, `QT`, `BH`, `BV`, `TH`, `TV`)
+
+The ML prediction shortcut is suppressed during training mode so that exhaustive RDO always runs (necessary for ground-truth collection). The CSV is flushed periodically and closed in `uninit()`.
+
+**Env var controlled** — normal encodes are completely unaffected when `VVENC_TRAINING_OUT` is not set.
+
+### 2.6 Feedback Data Generation (VVENC_ENABLE_ML_LIGHTGBM)
+
+When compiled with `VVENC_ENABLE_ML_LIGHTGBM=ON`, `VVEncImpl` reads the `VVENC_ML_FEEDBACK` environment variable during `init()` and stores the path in `m_cVVEncCfg.m_feedbackOutputFile`. During encoding, for each CU where:
+
+1. The ML predictor (`FASTSplitPredictor::predict()`) returned a confident split prediction (`mlSplit != NO_SPLIT`)
+2. The RDO-chosen split (`bestCS->cus` after exhaustive testing) differs from the ML prediction
+
+...one row is written to the feedback CSV containing: **Position** (poc, ctu_x, ctu_y), **22 features**, **ML-predicted label**, **ground-truth label**.
+
+The `deepenc-harness ml feedback` command sets this env var, then appends misprediction rows to the training set and retrains.
+
+**Env var controlled** — normal ML-enabled encodes are completely unaffected when `VVENC_ML_FEEDBACK` is not set.
+
+### 2.7 Private Helper Methods
+
 | `xCopyAu(vvencAccessUnit&, const AccessUnitList&)` | Serialise NAL units with Annex-B start codes |
 | `xConvertVerifyYUVBuffer(vvencYUVBuffer*)` | Bit-depth conversion + overflow check |
 
-### 2.5 Internal State
+### 2.8 Internal State
 
 ```cpp
 class VVEncImpl {

@@ -29,3 +29,9 @@ test/data/park_joy_*.yuv
 !/microbench/harness.h
 !/microbench/Makefile
 !/microbench/run_all.sh
+
+# Build install artifacts
+install_ml/
+
+# CTest temporary files
+Testing/

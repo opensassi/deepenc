@@ -11,7 +11,6 @@
 ```cpp
 #pragma once
 
-#include <LightGBM/c_api.h>
 #include <string>
 #include <vector>
 
@@ -30,6 +29,10 @@ public:
 
     FASTSplitPredictor();
     virtual ~FASTSplitPredictor();
+
+    /// Singleton access (global instance, used by EncCu)
+    static FASTSplitPredictor* getInstance();
+    static void setInstance(FASTSplitPredictor* predictor);
 
     /** \brief Load 5 LightGBM models from model directory
      *  \param[in] modelDir  Path to directory containing model files
@@ -65,37 +68,29 @@ public:
 private:
     /** \brief Load a single booster from file path
      *  \param[in]  path   Full path to .txt model file
-     *  \param[out] handle Output BoosterHandle
+     *  \param[out] handle Output LightGBM booster handle (void*)
      *  \retval 0  Success
      *  \retval -1 LGBM_BoosterCreateFromModelfile failed
      */
-    int xLoadBooster(const std::string& path, BoosterHandle* handle);
+    int xLoadBooster(const std::string& path, void** handle);
 
     /** \brief Run inference on a single booster
-     *  \param[in]  handle   Loaded BoosterHandle
+     *  \param[in]  handle   Loaded LightGBM booster handle (void*)
      *  \param[in]  features Feature vector (1 x nFeatures)
      *  \param[out] result   Predicted score [0.0, 1.0]
      *  \retval 0  Success
      *  \retval -1 LGBM_BoosterPredictForMat failed
      */
-    int xPredictOne(BoosterHandle handle,
+    int xPredictOne(void* handle,
                     const std::vector<double>& features,
                     double& result);
 
     static constexpr int NUM_MODELS = 5;
-    static constexpr const char* MODEL_NAMES[NUM_MODELS] = {
-        "qt_split_model.txt",
-        "bh_split_model.txt",
-        "bv_split_model.txt",
-        "th_split_model.txt",
-        "tv_split_model.txt"
-    };
 
-    BoosterHandle m_hBoosters[NUM_MODELS];  ///< Per-split-type booster handles
+    void*         m_hBoosters[NUM_MODELS];  ///< Per-split-type booster handles (LightGBM C API, typed void* to avoid header dependency)
     bool          m_bInitialized;           ///< true after successful init()
     std::string   m_cModelDir;              ///< Saved model directory path
 };
-
 }
 ```
 

@@ -160,6 +160,19 @@ int VVEncImpl::init( vvenc_config* config )
   // initialize the encoder
   m_pEncLib = new EncLib ( msg );
 
+#if VVENC_ENABLE_AI_TRAINING
+  {
+    const char* trainingOut = getenv("VVENC_TRAINING_OUT");
+    if (trainingOut && trainingOut[0] != 0)
+    {
+      size_t len = strlen(trainingOut);
+      if (len >= VVENC_MAX_STRING_LEN) len = VVENC_MAX_STRING_LEN - 1;
+      memcpy(m_cVVEncCfg.m_trainingOutputFile, trainingOut, len);
+      m_cVVEncCfg.m_trainingOutputFile[len] = 0;
+    }
+  }
+#endif
+
 #if HANDLE_EXCEPTION
   try
 #endif
@@ -190,6 +203,27 @@ int VVEncImpl::init( vvenc_config* config )
       msg.log(VVENC_WARNING, "[ML] Failed to load models from %s, ML disabled\n", m_cVVEncCfg.m_mlModelDir);
       delete m_pMLPredictor;
       m_pMLPredictor = nullptr;
+    }
+  }
+#endif
+
+#if VVENC_ENABLE_AI_TRAINING
+  if (m_cVVEncCfg.m_trainingOutputFile[0] != 0)
+  {
+    msg.log(VVENC_INFO, "[AI_TRAINING] Training CSV path: %s\n", m_cVVEncCfg.m_trainingOutputFile);
+  }
+#endif
+
+#if VVENC_ENABLE_ML_LIGHTGBM
+  {
+    const char* feedbackOut = getenv("VVENC_ML_FEEDBACK");
+    if (feedbackOut && feedbackOut[0] != 0)
+    {
+      size_t len = strlen(feedbackOut);
+      if (len >= VVENC_MAX_STRING_LEN) len = VVENC_MAX_STRING_LEN - 1;
+      memcpy(m_cVVEncCfg.m_feedbackOutputFile, feedbackOut, len);
+      m_cVVEncCfg.m_feedbackOutputFile[len] = 0;
+      msg.log(VVENC_INFO, "[ML_FEEDBACK] Feedback CSV path: %s\n", m_cVVEncCfg.m_feedbackOutputFile);
     }
   }
 #endif

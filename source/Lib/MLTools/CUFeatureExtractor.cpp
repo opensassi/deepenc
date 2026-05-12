@@ -34,7 +34,7 @@ int CUFeatureExtractor::extract(const CodingUnit& cu,
 {
     xReset();
 
-    if (!cu.cs) return -1;
+    if (!cu.cs || !cu.cs->sps) return -1;
 
     if (xAddTextureFeatures(cu) != 0) return -1;
     if (xAddNeighborFeatures(cu) != 0) return -1;
@@ -195,7 +195,7 @@ int CUFeatureExtractor::xAddResidualFeatures(const CodingUnit& cu)
     int    coeffCount = 0;
     double sad        = 0.0;
 
-    if (cu.rootCbf)
+    if (cu.rootCbf && cu.firstTU)
     {
         for (const auto& tu : CU::traverseTUs(const_cast<CodingUnit&>(cu)))
         {
