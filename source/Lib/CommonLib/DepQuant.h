@@ -281,6 +281,14 @@ namespace DQIntern
       levels3 = m_currSbbCtx[3].levels + scanInfo.scanIdx;
     }
 
+    uint8_t* getCurrSbbFlags( int stateId ) { return m_currSbbCtx[stateId].sbbFlags; }
+    uint8_t* getPrevSbbFlags( int prevId )  { return m_prevSbbCtx[prevId].sbbFlags; }
+    uint8_t* getCurrLevels( int stateId )   { return m_currSbbCtx[stateId].levels; }
+    uint8_t* getPrevLevels( int prevId )    { return m_prevSbbCtx[prevId].levels; }
+    const NbInfoOut* getNbInfo() const      { return m_nbInfo; }
+    BinFracBits getSbbFlagBits( int bit )   { return m_sbbFlagBits[bit]; }
+    int getNumSbb() const                   { return m_currSbbCtx[0].levels - m_currSbbCtx[0].sbbFlags; }
+
   private:
     const NbInfoOut* m_nbInfo;
     BinFracBits      m_sbbFlagBits[2];

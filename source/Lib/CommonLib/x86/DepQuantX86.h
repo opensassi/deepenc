@@ -211,6 +211,145 @@ namespace vvenc {
       }
     }
 
+    // Scalar per-state setup: copy sbbFlags/levels from prev state, compute sigNSbb
+    static int xUpdateSbbFlagsAndSigNSbb(
+        const DQIntern::ScanInfo& scanInfo,
+        const DQIntern::Decisions& decisions,
+        DQIntern::StateMem& curr,
+        DQIntern::CommonCtx& commonCtx)
+    {
+      int stateMask = 0;
+      for( int i = 0; i < 4; i++ )
+      {
+        int prevId = decisions.prevId[i];
+        if( prevId <= -2 ) continue;
+
+        const int refId = prevId < 0 ? -1 : ( prevId < 4 ? curr.refSbbCtxId[i] : prevId - 4 );
+        uint8_t* sbbFlags = commonCtx.getCurrSbbFlags( i );
+        uint8_t* levels   = commonCtx.getCurrLevels( i );
+        const int numSbb  = commonCtx.getNumSbb();
+        const uint16_t maxDist   = commonCtx.getNbInfo()[scanInfo.scanIdx - 1].maxDist;
+        const uint16_t sbbSize   = scanInfo.sbbSize;
+        const std::size_t setCpSize = ( maxDist > sbbSize ? maxDist - sbbSize : 0 ) * sizeof( uint8_t );
+
+        if( refId >= 0 )
+        {
+          ::memcpy( sbbFlags, commonCtx.getPrevSbbFlags( refId ), numSbb * sizeof( uint8_t ) );
+          ::memcpy( levels + scanInfo.scanIdx + sbbSize, commonCtx.getPrevLevels( refId ) + scanInfo.scanIdx + sbbSize, setCpSize );
+        }
+        else
+        {
+          ::memset( sbbFlags, 0, numSbb * sizeof( uint8_t ) );
+          ::memset( levels + scanInfo.scanIdx + sbbSize, 0, setCpSize );
+        }
+        sbbFlags[scanInfo.sbbPos] = !!curr.numSig[i];
+
+        const int sigNSbb = ( ( scanInfo.nextSbbRight ? sbbFlags[scanInfo.nextSbbRight] : false ) || ( scanInfo.nextSbbBelow ? sbbFlags[scanInfo.nextSbbBelow] : false ) ? 1 : 0 );
+        curr.refSbbCtxId[i] = i;
+        const BinFracBits sbbBits = commonCtx.getSbbFlagBits( sigNSbb );
+        curr.sbbBits0[i] = sbbBits.intBits[0];
+        curr.sbbBits1[i] = sbbBits.intBits[1];
+
+        if( sigNSbb || ( ( scanInfo.nextSbbRight && scanInfo.nextSbbBelow ) ? sbbFlags[scanInfo.nextSbbBelow + 1] : false ) )
+        {
+          stateMask |= ( 1 << i );
+        }
+      }
+      return stateMask;
+    }
+
+    // SIMD 4-wide neighbor loop: process all active states in parallel
+    static void xUpdateX4NeighborLoop(
+        DQIntern::CommonCtx& commonCtx,
+        const DQIntern::ScanInfo& scanInfo,
+        int stateMask,
+        DQIntern::StateMem& curr)
+    {
+      if( !stateMask ) return;
+
+      uint8_t* levels0;
+      uint8_t* levels1;
+      uint8_t* levels2;
+      uint8_t* levels3;
+      commonCtx.getLevelPtrs( scanInfo, levels0, levels1, levels2, levels3 );
+
+      const int sbbSize = scanInfo.sbbSize;
+      levels0 -= sbbSize;
+      levels1 -= sbbSize;
+      levels2 -= sbbSize;
+      levels3 -= sbbSize;
+
+      const int scanBeg = scanInfo.scanIdx - sbbSize;
+      const DQIntern::NbInfoOut* nbOut = commonCtx.getNbInfo() + scanBeg;
+
+      const __m128i vZero = _mm_setzero_si128();
+      const __m128i v1    = _mm_set1_epi16( 1 );
+      const __m128i v4    = _mm_set1_epi16( 4 );
+      const __m128i v255  = _mm_set1_epi16( 255 );
+      const __m128i v1F   = _mm_set1_epi16( 0x1F );
+
+      // Build blend mask for partial state mask
+      const __m128i blendMask = _mm_setr_epi8(
+          ( int8_t )( stateMask & 1 ? -1 : 0 ),
+          ( int8_t )( stateMask & 2 ? -1 : 0 ),
+          ( int8_t )( stateMask & 4 ? -1 : 0 ),
+          ( int8_t )( stateMask & 8 ? -1 : 0 ),
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 );
+
+      for( int id = 0; id < sbbSize; id++, nbOut++ )
+      {
+        if( !nbOut->num ) continue;
+
+        __m128i sumAbs  = vZero;
+        __m128i sumAbs1 = vZero;
+        __m128i sumNum  = vZero;
+
+#define UPDATE_X4(k) do { \
+          int op = nbOut->outPos[k]; \
+          uint32_t g4 = ( (uint32_t)levels3[op] << 24 ) | ( (uint32_t)levels2[op] << 16 ) | \
+                        ( (uint32_t)levels1[op] << 8 ) | levels0[op]; \
+          __m128i vv = _mm_cvtepu8_epi16( _mm_cvtsi32_si128( (int)g4 ) ); \
+          sumAbs  = _mm_add_epi16( sumAbs, vv ); \
+          __m128i vt1 = _mm_and_si128( vv, v1 ); \
+          vt1 = _mm_add_epi16( vt1, v4 ); \
+          vt1 = _mm_min_epu16( vt1, vv ); \
+          sumAbs1 = _mm_add_epi16( sumAbs1, vt1 ); \
+          sumNum = _mm_sub_epi16( sumNum, _mm_cmpgt_epi16( vv, vZero ) ); \
+        } while( 0 )
+
+        switch( nbOut->num )
+        {
+        default:
+        case 5: UPDATE_X4( 4 );
+        case 4: UPDATE_X4( 3 );
+        case 3: UPDATE_X4( 2 );
+        case 2: UPDATE_X4( 1 );
+        case 1: UPDATE_X4( 0 );
+        }
+#undef UPDATE_X4
+
+        sumAbs = _mm_min_epu16( sumAbs, v255 );
+        sumAbs1 = _mm_and_si128( sumAbs1, v1F );
+        __m128i tpl = _mm_or_si128( _mm_slli_epi16( sumNum, 5 ), sumAbs1 );
+
+        __m128i tpl8 = _mm_packus_epi16( tpl, vZero );
+        __m128i sum8 = _mm_packus_epi16( sumAbs, vZero );
+
+        if( stateMask == 0xF )
+        {
+          _mm_storeu_si32( &curr.tplAcc[id][0], tpl8 );
+          _mm_storeu_si32( &curr.sum1st[id][0], sum8 );
+        }
+        else
+        {
+          __m128i oldTpl = _mm_loadu_si32( &curr.tplAcc[id][0] );
+          __m128i oldSum = _mm_loadu_si32( &curr.sum1st[id][0] );
+          _mm_storeu_si32( &curr.tplAcc[id][0], _mm_blendv_epi8( oldTpl, tpl8, blendMask ) );
+          _mm_storeu_si32( &curr.sum1st[id][0], _mm_blendv_epi8( oldSum, sum8, blendMask ) );
+        }
+      }
+    }
+
     template<X86_VEXT vext>
     static inline void updateStatesEOS( const DQIntern::ScanInfo& scanInfo, const DQIntern::Decisions& decisions, const DQIntern::StateMem& skip, DQIntern::StateMem& curr, DQIntern::CommonCtx& commonCtx )
     {
@@ -312,15 +451,9 @@ namespace vvenc {
       memset( curr.tplAcc, 0, sizeof( curr.tplAcc ) );
       memset( curr.sum1st, 0, sizeof( curr.sum1st ) );
 
-      for( int i = 0; i < 4; i++ )
       {
-        int prevId = decisions.prevId[i];
-
-        if( prevId > -2 )
-        {
-          const int refId = prevId < 0 ? -1 : ( prevId < 4 ? curr.refSbbCtxId[i] : prevId - 4 );
-          commonCtx.update( scanInfo, refId, i, curr );
-        }
+        int stateMask = xUpdateSbbFlagsAndSigNSbb( scanInfo, decisions, curr, commonCtx );
+        xUpdateX4NeighborLoop( commonCtx, scanInfo, stateMask, curr );
       }
 
       memset( curr.numSig, 0, sizeof( curr.numSig ) );

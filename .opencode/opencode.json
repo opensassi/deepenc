@@ -13,6 +13,11 @@
       "type": "local",
       "command": ["npx", "@playwright/mcp@latest", "--headless"],
       "enabled": true
+    },
+    "debugger": {
+      "type": "local",
+      "command": ["/home/pc/.local/bin/mcp-server-gdb"],
+      "enabled": true
     }
   }
 }
