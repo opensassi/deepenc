@@ -47,6 +47,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "TrQuant.h"
 #include "TrQuant_EMT.h"
+#include "Primitives.h"
 #include "QuantRDOQ.h"
 #include "DepQuant.h"
 #include "UnitTools.h"
@@ -252,6 +253,22 @@ TrQuant::TrQuant() : m_scalingListEnabled(false), m_quant( nullptr )
 #if defined( TARGET_SIMD_X86 ) && ENABLE_SIMD_TRAFO
   initTrQuantX86();
 #endif
+  syncToGlobal();
+}
+
+void TrQuant::syncToGlobal()
+{
+  g_vvenc.tr.fwdLfnstNxN = m_fwdLfnstNxN;
+  g_vvenc.tr.invLfnstNxN = m_invLfnstNxN;
+  memcpy(&g_vvenc.tr.fwdICT, &m_fwdICT[0], sizeof(g_vvenc.tr.fwdICT));
+  memcpy(&g_vvenc.tr.invICT, &m_invICT[0], sizeof(g_vvenc.tr.invICT));
+  for (int i = 0; i < 5; i++)
+  {
+    g_vvenc.tr.fastFwdCore_2D[i] = g_tCoeffOps.fastFwdCore_2D[i];
+    g_vvenc.tr.fastInvCore[i] = g_tCoeffOps.fastInvCore[i];
+  }
+  g_vvenc.tr.roundClip8 = g_tCoeffOps.roundClip8;
+  g_vvenc.tr.roundClip4 = g_tCoeffOps.roundClip4;
 }
 
 TrQuant::~TrQuant()

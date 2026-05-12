@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "Quant.h"
+#include "Primitives.h"
 #include "UnitTools.h"
 #include "ContextModelling.h"
 #include "CodingStructure.h"
@@ -287,7 +288,13 @@ Quant::Quant( const Quant* other, bool useScalingLists ) : m_RDOQ( 0 ), m_useRDO
 #if defined( TARGET_SIMD_X86 ) && ENABLE_SIMD_OPT_QUANT
   initQuantX86();
 #endif
+  syncToGlobal();
+}
 
+void Quant::syncToGlobal()
+{
+  g_vvenc.quant.xDeQuant = xDeQuant;
+  memcpy(&g_vvenc.quant.xQuant, &xQuant, sizeof(g_vvenc.quant.xQuant));
 }
 
 Quant::~Quant()

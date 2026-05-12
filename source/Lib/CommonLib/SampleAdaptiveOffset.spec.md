@@ -57,6 +57,8 @@ public:
     Pel* srcLine, Pel* orgLine, int srcStride, int orgStride,
     int channelBitDepth, int64_t* count, int64_t* diff);
 
+  void syncToGlobal();
+
 protected:
   void deriveLoopFilterBoundaryAvailibility(CodingStructure& cs,
     const Position& pos, uint8_t& availMask) const;

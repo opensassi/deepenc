@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "CommonDef.h"
+#include "Primitives.h"
 #include "Unit.h"
 #include "Picture.h"
 
@@ -86,6 +87,8 @@ private:
 #endif
 
 public:
+
+  void syncToGlobal();
 
   LoopFilter();
   ~LoopFilter();

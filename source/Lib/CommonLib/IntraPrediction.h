@@ -48,6 +48,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "Unit.h"
 #include "Picture.h"
 #include "MatrixIntraPrediction.h"
+#include "Primitives.h"
 
 //! \ingroup CommonLib
 //! \{
@@ -193,6 +194,8 @@ public:
   void ( *IntraHorVerPDPC )       ( Pel* pDsty, const int dstStride, Pel* refSide, const int width, const int height, int scale, const Pel* refMain, const ClpRng& clpRng );
   void ( *IntraPredSampleFilter ) ( PelBuf& piPred, const CPelBuf& pSrc );
   void ( *xPredIntraPlanar )      ( PelBuf& pDst, const CPelBuf& pSrc );
+
+  void syncToGlobal();
 };
 
 } // namespace vvenc

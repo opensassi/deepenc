@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "InterPrediction.h"
+#include "Primitives.h"
 #include "Unit.h"
 #include "UnitTools.h"
 #include "dtrace_next.h"
@@ -667,7 +668,7 @@ InterPredInterpolation::InterPredInterpolation()
   , m_isBi(false)
   , m_ifpLines(0)
 {
-
+  syncToGlobal();
 }
 
 InterPredInterpolation::~InterPredInterpolation()
@@ -701,6 +702,15 @@ void InterPredInterpolation::destroy()
     delete[] m_storedMv;
     m_storedMv = nullptr;
   }
+}
+
+void InterPredInterpolation::syncToGlobal()
+{
+  g_vvenc.bdof.biDirOptFlow   = xFpBiDirOptFlow;
+  g_vvenc.bdof.bdofGradFilter = xFpBDOFGradFilter;
+  g_vvenc.bdof.profGradFilter = xFpProfGradFilter;
+  g_vvenc.bdof.applyProf      = xFpApplyPROF;
+  g_vvenc.bdof.padDmvr        = xFpPadDmvr;
 }
 
 void InterPredInterpolation::init( bool enableOpt )

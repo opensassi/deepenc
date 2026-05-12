@@ -50,6 +50,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "UnitTools.h"
 #include "Rom.h"
 #include "InterpolationFilter.h"
+#include "Primitives.h"
 #include "dtrace_next.h"
 
 #include <memory.h>
@@ -270,6 +271,18 @@ IntraPrediction::IntraPrediction( bool enableOpt )
 #endif
   }
 #endif // ENABLE_SIMD_OPT_INTRAPRED
+
+  syncToGlobal();
+}
+
+void IntraPrediction::syncToGlobal()
+{
+  g_vvenc.intra.angleLuma      = IntraPredAngleLuma;
+  g_vvenc.intra.angleChroma    = IntraPredAngleChroma;
+  g_vvenc.intra.anglePDPC      = IntraAnglePDPC;
+  g_vvenc.intra.horVerPDPC     = IntraHorVerPDPC;
+  g_vvenc.intra.sampleFilter   = IntraPredSampleFilter;
+  g_vvenc.intra.intraPlanar    = xPredIntraPlanar;
 }
 
 IntraPrediction::~IntraPrediction()

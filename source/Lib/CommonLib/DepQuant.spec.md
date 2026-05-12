@@ -310,6 +310,8 @@ public:
       const DQIntern::TUParameters& tuPars, int defaultTh,
       bool zeroOutForThres, int zeroOutWidth, int zeroOutHeight);
 
+  void syncToGlobal();
+
 private:
   void xQuantDQ(TransformUnit& tu, const CCoeffBuf& srcCoeff,
                 const ComponentID compID, const QpParam& cQP,

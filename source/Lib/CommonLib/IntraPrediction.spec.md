@@ -124,6 +124,8 @@ public:
   void (*IntraHorVerPDPC)      (Pel* dst, int s, Pel* ref, int w, int h, int scale, const Pel* refM, const ClpRng& rng);
   void (*IntraPredSampleFilter)(PelBuf& dst, const CPelBuf& src);
   void (*xPredIntraPlanar)     (PelBuf& dst, const CPelBuf& src);
+
+  void syncToGlobal();
 };
 
 }

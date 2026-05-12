@@ -184,6 +184,7 @@ public:
   void saveUnadjustedLambda();
 
 private:
+  // Note: g_vvenc.dist sub-struct is declared but syncToGlobal() is not yet wired for RdCost
   vvencCostMode  m_costMode;
   double         m_distortionWeight[MAX_NUM_COMP];
   double         m_dLambda;

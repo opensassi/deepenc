@@ -17,6 +17,7 @@ namespace vvenc {
 
 struct PelBufferOps
 {
+  // Note: g_vvenc.pelbuf sub-struct is declared but syncToGlobal() is not yet wired for PelBufferOps
   PelBufferOps();
   bool isInitX86Done;
 

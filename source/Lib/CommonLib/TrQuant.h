@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "CommonDef.h"
+#include "Primitives.h"
 #include "Unit.h"
 #include "Contexts.h"
 #include "ContextModelling.h"
@@ -77,6 +78,7 @@ class TrQuant
 public:
   TrQuant();
   ~TrQuant();
+  void syncToGlobal();
 
   // initialize class
   void init(

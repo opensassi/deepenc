@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "CommonLib/Unit.h"
+#include "CommonLib/Primitives.h"
 #include "EncoderLib/EncStage.h"
 #include <sstream>
 #include <map>
@@ -134,6 +135,7 @@ public:
   virtual ~MCTF();
 
   void init( const VVEncCfg& encCfg, bool isFinalPass, NoMallocThreadPool* threadPool );
+  void syncToGlobal();
 
 protected:
   virtual void initPicture    ( Picture* pic );

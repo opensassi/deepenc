@@ -47,6 +47,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "Unit.h"
 #include "UnitPartitioner.h"
 #include "QuantRDOQ2.h"
+#include "Primitives.h"
 
 //! \ingroup CommonLib
 //! \{
@@ -389,6 +390,7 @@ public:
   void( *m_updateStatesEOS )( const DQIntern::ScanInfo& scanInfo, const DQIntern::Decisions& decisions, const DQIntern::StateMem& skip, DQIntern::StateMem& curr, DQIntern::CommonCtx& commonCtx );
   void( *m_findFirstPos )( int& firstTestPos, const TCoeff* tCoeff, const DQIntern::TUParameters& tuPars, int defaultTh, bool zeroOutForThres, int zeroOutWidth, int zeroOutHeight );
 
+  void syncToGlobal();
 };
 
 } // namespace vvenc

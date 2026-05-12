@@ -70,6 +70,7 @@ class Quant
 public:
   Quant(const Quant* other, bool useScalingLists);
   virtual ~Quant();
+  void syncToGlobal();
 
   virtual void init(int rdoq = 0, bool useRDOQTS = false, int thrVal = 8);
 

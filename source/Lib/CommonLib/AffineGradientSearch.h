@@ -47,6 +47,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "CommonDef.h"
+#include "Primitives.h"
 #include "TypeDef.h"
 
 namespace vvenc {
@@ -75,6 +76,7 @@ using namespace arm_simd;
 
     AffineGradientSearch( bool enableOpt = true );
     ~AffineGradientSearch() {}
+    void syncToGlobal();
 
 #if defined(TARGET_SIMD_X86) && ENABLE_SIMD_OPT_AFFINE_ME
     void initAffineGradientSearchX86();

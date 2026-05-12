@@ -22,34 +22,36 @@ CommonLib is the innermost dependency layer of the VVenC encoder. It provides al
 | 8 | `Contexts.spec.md` | CABAC context state arrays and initialisation |
 | 9 | `DepQuant.spec.md` | Dependent quantisation (DP-65, DP-83 variants) |
 | 10 | `dtrace.spec.md` | Debug trace logging infrastructure |
-| 11 | `InitX86.spec.md` | x86 SIMD feature detection and kernel initialisation |
-| 12 | `InterpolationFilter.spec.md` | DCTIF interpolation filter for sub-pel motion compensation |
-| 13 | `InterPrediction.spec.md` | Inter prediction — motion compensation, weighted prediction, BDOF |
-| 14 | `IntraPrediction.spec.md` | Intra prediction — DC/Planar/Angular/MIP/CCLM |
-| 15 | `LoopFilter.spec.md` | Deblocking filter (VVC-style wider-strength, luma/chroma) |
-| 16 | `MatrixIntraPrediction.spec.md` | MIP — matrix-based intra prediction |
-| 17 | `MCTF.spec.md` | Motion-compensated temporal filter (denoising pre-filter) |
-| 18 | `Mv.spec.md` | Motion vector with arithmetic, precision, AMVR/affine/IBC helpers |
-| 19 | `PicYuvMD5.spec.md` | MD5 hash computation for picture data |
-| 20 | `Picture.spec.md` | Picture buffer management, PicShared pool |
-| 21 | `ProfileLevelTier.spec.md` | VVC profile/tier/level constraints and checks |
-| 22 | `Quant.spec.md` | Base quantisation — HDQ, sign hiding, scaling lists |
-| 23 | `QuantRDOQ.spec.md` | RDO quantisation (rate-distortion optimised quant) |
-| 24 | `QuantRDOQ2.spec.md` | Integer-only RDOQ variant |
-| 25 | `RdCost.spec.md` | Rate-distortion cost computation (SSE/weighted) |
-| 26 | `Reshape.spec.md` | In-loop luma mapping with chroma scaling (reshaping) |
-| 27 | `Rom.spec.md` | ROM tables — transforms, quantisation, scan patterns |
-| 28 | `SampleAdaptiveOffset.spec.md` | SAO — sample adaptive offset loop filter |
-| 29 | `SearchSpaceCounter.spec.md` | Encoder search-space statistics counter |
-| 30 | `SEI.spec.md` | SEI message types and parameter set storage |
-| 31 | `Slice.spec.md` | Slice header, PPS, SPS, VPS parameter sets |
-| 32 | `StatCounter.spec.md` | Per-picture statistics accumulator |
-| 33 | `TimeProfiler.spec.md` | Lightweight timing profiler for encoder stages |
-| 34 | `TrQuant.spec.md` | Forward/inverse transform + quantisation pipeline |
-| 35 | `TrQuant_EMT.spec.md` | EMT — explicit multiple transform selection |
-| 36 | `Unit.spec.md` | Coding unit / prediction unit / transform unit data structures |
-| 37 | `UnitPartitioner.spec.md` | CTU partitioning — QT/MTT/BT/TT split decision logic |
-| 38 | `UnitTools.spec.md` | Helper functions for unit geometry and neighbour access |
+| 11 | `InitX86.spec.md` | x86 SIMD feature detection and kernel initialisation; populates g_vvenc via syncToGlobal() |
+| 12 | `Primitives.spec.md` | Central VVencPrimitive dispatch table — g_vvenc global, vvenc_setup_primitives chain, full dispatch catalog |
+| 13 | `asm-primitives.spec.md` | NASM assembly registration infrastructure — setupAssemblyPrimitives(), extern C declarations |
+| 14 | `InterpolationFilter.spec.md` | DCTIF interpolation filter for sub-pel motion compensation |
+| 15 | `InterPrediction.spec.md` | Inter prediction — motion compensation, weighted prediction, BDOF |
+| 16 | `IntraPrediction.spec.md` | Intra prediction — DC/Planar/Angular/MIP/CCLM |
+| 17 | `LoopFilter.spec.md` | Deblocking filter (VVC-style wider-strength, luma/chroma) |
+| 18 | `MatrixIntraPrediction.spec.md` | MIP — matrix-based intra prediction |
+| 19 | `MCTF.spec.md` | Motion-compensated temporal filter (denoising pre-filter) |
+| 20 | `Mv.spec.md` | Motion vector with arithmetic, precision, AMVR/affine/IBC helpers |
+| 21 | `PicYuvMD5.spec.md` | MD5 hash computation for picture data |
+| 22 | `Picture.spec.md` | Picture buffer management, PicShared pool |
+| 23 | `ProfileLevelTier.spec.md` | VVC profile/tier/level constraints and checks |
+| 24 | `Quant.spec.md` | Base quantisation — HDQ, sign hiding, scaling lists |
+| 25 | `QuantRDOQ.spec.md` | RDO quantisation (rate-distortion optimised quant) |
+| 26 | `QuantRDOQ2.spec.md` | Integer-only RDOQ variant |
+| 27 | `RdCost.spec.md` | Rate-distortion cost computation (SSE/weighted) |
+| 28 | `Reshape.spec.md` | In-loop luma mapping with chroma scaling (reshaping) |
+| 29 | `Rom.spec.md` | ROM tables — transforms, quantisation, scan patterns |
+| 30 | `SampleAdaptiveOffset.spec.md` | SAO — sample adaptive offset loop filter |
+| 31 | `SearchSpaceCounter.spec.md` | Encoder search-space statistics counter |
+| 32 | `SEI.spec.md` | SEI message types and parameter set storage |
+| 33 | `Slice.spec.md` | Slice header, PPS, SPS, VPS parameter sets |
+| 34 | `StatCounter.spec.md` | Per-picture statistics accumulator |
+| 35 | `TimeProfiler.spec.md` | Lightweight timing profiler for encoder stages |
+| 36 | `TrQuant.spec.md` | Forward/inverse transform + quantisation pipeline |
+| 37 | `TrQuant_EMT.spec.md` | EMT — explicit multiple transform selection |
+| 38 | `Unit.spec.md` | Coding unit / prediction unit / transform unit data structures |
+| 39 | `UnitPartitioner.spec.md` | CTU partitioning — QT/MTT/BT/TT split decision logic |
+| 40 | `UnitTools.spec.md` | Helper functions for unit geometry and neighbour access |
 
 ## 3. System Architecture
 
@@ -215,7 +217,7 @@ No D3 animation — CommonLib is a static library of data types and coding tools
 
 | Test ID | Scope | What to Verify |
 |---------|-------|---------------|
-| `CL_ALL_COMPONENTS_LINK` | All 38 spec files | Each component header compiles and symbols resolve |
+| `CL_ALL_COMPONENTS_LINK` | All 40 spec files | Each component header compiles and symbols resolve |
 | `CL_MV_BASIC` | Mv | Construction, arithmetic, precision, clipping |
 | `CL_BUFFER_OPS` | Buffer | PelBuf stride/layout, copy, padding, reconstruction |
 | `CL_TRQUANT_ROUNDTRIP` | TrQuant | Forward + inverse transform round-trip preserves energy |

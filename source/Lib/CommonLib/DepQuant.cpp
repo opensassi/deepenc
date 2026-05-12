@@ -44,6 +44,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "TrQuant.h"
 #include "CodingStructure.h"
 #include "UnitTools.h"
+#include "Primitives.h"
 
 #include <bitset>
 
@@ -1453,6 +1454,17 @@ DepQuant::DepQuant( const Quant* other, bool enc, bool useScalingLists, bool ena
     initDepQuantARM();
 #endif
   }
+
+  syncToGlobal();
+}
+
+void DepQuant::syncToGlobal()
+{
+  g_vvenc.dq.checkAllRdCosts    = m_checkAllRdCosts;
+  g_vvenc.dq.checkAllRdCostsOdd1 = m_checkAllRdCostsOdd1;
+  g_vvenc.dq.updateStates       = m_updateStates;
+  g_vvenc.dq.updateStatesEOS    = m_updateStatesEOS;
+  g_vvenc.dq.findFirstPos       = m_findFirstPos;
 }
 
 DepQuant::~DepQuant()

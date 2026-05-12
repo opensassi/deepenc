@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "AdaptiveLoopFilter.h"
+#include "Primitives.h"
 
 #include "CodingStructure.h"
 #include "Picture.h"
@@ -90,6 +91,17 @@ AdaptiveLoopFilter::AdaptiveLoopFilter( bool enableOpt )
 #endif
 #endif
   }
+  syncToGlobal();
+}
+
+void AdaptiveLoopFilter::syncToGlobal()
+{
+  memcpy(&g_vvenc.alf.deriveClassificationBlk, &m_deriveClassificationBlk, sizeof(g_vvenc.alf.deriveClassificationBlk));
+  memcpy(&g_vvenc.alf.filterCcAlf, &m_filterCcAlf, sizeof(g_vvenc.alf.filterCcAlf));
+  memcpy(&g_vvenc.alf.filter5x5Blk[0], &m_filter5x5Blk[0], sizeof(g_vvenc.alf.filter5x5Blk[0]));
+  memcpy(&g_vvenc.alf.filter5x5Blk[1], &m_filter5x5Blk[1], sizeof(g_vvenc.alf.filter5x5Blk[1]));
+  memcpy(&g_vvenc.alf.filter7x7Blk[0], &m_filter7x7Blk[0], sizeof(g_vvenc.alf.filter7x7Blk[0]));
+  memcpy(&g_vvenc.alf.filter7x7Blk[1], &m_filter7x7Blk[1], sizeof(g_vvenc.alf.filter7x7Blk[1]));
 }
 
 bool AdaptiveLoopFilter::isCrossedByVirtualBoundaries( const CodingStructure& cs, const int xPos, const int yPos, const int width, const int height, bool& clipTop, bool& clipBottom, bool& clipLeft, bool& clipRight, int& numHorVirBndry, int& numVerVirBndry, int horVirBndryPos[], int verVirBndryPos[], int& rasterSliceAlfPad )

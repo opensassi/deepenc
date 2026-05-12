@@ -128,23 +128,26 @@ namespace vvenc {
 
 #define CLEAR_AND_CHECK_TUIDX                             0 ///< add additional checks to tu-map management (not accessing the map when dirty)
 
-// SIMD optimizations
+// SIMD optimizations — consolidated flag (ENABLE_ASM) replaces per-module ENABLE_SIMD_OPT_*
 #define SIMD_ENABLE                                       1
 #define ENABLE_SIMD_OPT                                 ( SIMD_ENABLE )                                     ///< SIMD optimizations, no impact on RD performance
-#define ENABLE_SIMD_OPT_MCIF                            ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for the interpolation filter, no impact on RD performance
-#define ENABLE_SIMD_OPT_BUFFER                          ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for the buffer operations, no impact on RD performance
-#define ENABLE_SIMD_OPT_DIST                            ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for the distortion calculations(SAD,SSE,HADAMARD), no impact on RD performance
-#define ENABLE_SIMD_OPT_AFFINE_ME                       ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for affine ME, no impact on RD performance
-#define ENABLE_SIMD_OPT_ALF                             ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for ALF
-#define ENABLE_SIMD_OPT_SAO                             ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for SAO
-#define ENABLE_SIMD_DBLF                                ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for DBLF
-#define ENABLE_SIMD_OPT_BDOF                            ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for BDOF
-#define ENABLE_SIMD_OPT_INTRAPRED                       ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for IntraPred
-#define ENABLE_SIMD_OPT_MCTF                            ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for MCTF
-#define ENABLE_SIMD_TRAFO                               ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for Transformation
-#define ENABLE_SIMD_OPT_QUANT                           ( 1 && ENABLE_SIMD_OPT )                            ///< SIMD optimization for Quantization
-#define ENABLE_SIMD_LOG2                                ( 1 && ENABLE_SIMD_OPT )                            ///< use SIMD intrisic to calculate log2
-#define ENABLE_SIMD_OPT_FGA                             ( 1 && ENABLE_SIMD_OPT )                            ///< use SIMD intrisic for FGA
+
+// Single consolidated ASM flag. All per-module guards now alias this.
+#define ENABLE_ASM                                         ENABLE_SIMD_OPT
+#define ENABLE_SIMD_OPT_MCIF                              ENABLE_ASM
+#define ENABLE_SIMD_OPT_BUFFER                            ENABLE_ASM
+#define ENABLE_SIMD_OPT_DIST                              ENABLE_ASM
+#define ENABLE_SIMD_OPT_AFFINE_ME                         ENABLE_ASM
+#define ENABLE_SIMD_OPT_ALF                               ENABLE_ASM
+#define ENABLE_SIMD_OPT_SAO                               ENABLE_ASM
+#define ENABLE_SIMD_DBLF                                  ENABLE_ASM
+#define ENABLE_SIMD_OPT_BDOF                              ENABLE_ASM
+#define ENABLE_SIMD_OPT_INTRAPRED                         ENABLE_ASM
+#define ENABLE_SIMD_OPT_MCTF                              ENABLE_ASM
+#define ENABLE_SIMD_TRAFO                                 ENABLE_ASM
+#define ENABLE_SIMD_OPT_QUANT                             ENABLE_ASM
+#define ENABLE_SIMD_LOG2                                  ENABLE_ASM
+#define ENABLE_SIMD_OPT_FGA                               ENABLE_ASM
 
 #if defined( __clang_major__ ) && __clang_major__ >= 18 && __clang_major__ < 20 && defined( __ARM_ARCH ) && __ARM_ARCH == 7
 // workaround for clang targeting armv7 (see: https://github.com/fraunhoferhhi/vvenc/issues/560)

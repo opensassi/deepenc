@@ -16,7 +16,7 @@ This specification covers the deepenc source fork only. The harness tooling (tra
 
 | Module | Directory | Facade Class | Aggregate Spec | Internal Spec Files |
 |---|---|---|---|---|---|
-| CommonLib | `source/Lib/CommonLib/` | — | `CommonLib.spec.md` | 38 files (BitStream through InitX86) |
+| CommonLib | `source/Lib/CommonLib/` | — | `CommonLib.spec.md` | 40 files (BitStream through asm-primitives) |
 | Utilities | `source/Lib/Utilities/` | `NoMallocThreadPool` | — | 1 file |
 | EncoderLib | `source/Lib/EncoderLib/` | `EncLib` | `EncoderLib.spec.md` | 25 files (BinEncoder through EncLib) |
 | DecoderLib | `source/Lib/DecoderLib/` | `DecCu` | — | 1 file |
@@ -25,7 +25,65 @@ This specification covers the deepenc source fork only. The harness tooling (tra
 | vvencapp | `source/App/vvencapp/` | — | — | 1 file |
 | vvencFFapp | `source/App/vvencFFapp/` | `EncApp` | — | 2 files (EncApp, encmain) |
 
-**Total: 76 internal spec files across 8 modules.**
+**Total: 80 internal spec files across 8 modules.**
+
+## 2. Centralized Primitive Dispatch
+
+The deepenc fork introduces a **centralized SIMD/primitive dispatch table** (`g_vvenc`) that consolidates the 17 per-module function pointer tables into a single `VVencPrimitive` struct. This architecture mirrors the approach used by x265's `EncoderPrimitives` singleton, enabling future hand-written assembly optimization without modifying existing per-instance dispatch.
+
+### 2.1 Architecture
+
+The dispatch system has three layers:
+
+| Layer | Component | Role | Status |
+|-------|-----------|------|--------|
+| **Global table** | `VVencPrimitive g_vvenc` | Central struct holding ~146 function pointers across 14 sub-structs | Implemented |
+| **Per-instance tables** | `m_*` members in each module | Authoritative dispatch for production code — `syncToGlobal()` copies to `g_vvenc` | Unchanged (backward compat) |
+| **Assembly registry** | `setupAssemblyPrimitives()` | Overrides `g_vvenc` entries with NASM functions | Stub (Phase 2) |
+
+### 2.2 Setup Chain
+
+```
+vvenc_setup_primitives(cpuMask)
+  → setupCPrimitives(g_vvenc)            // C scalar fallbacks
+  → setupAssemblyPrimitives(g_vvenc, cpuMask)  // NASM overrides (Phase 2)
+  → setupAliasPrimitives(g_vvenc)        // HBD/chroma aliases (Phase 3)
+```
+
+### 2.3 syncToGlobal Pattern
+
+Each module that has function pointer dispatch tables exposes a `syncToGlobal()` method. This copies the per-instance function pointers to `g_vvenc`, keeping the global table in sync. The call chain is:
+
+```
+Module constructor → populates m_* with C defaults → syncToGlobal()
+Module::init(true) → initModuleX86() → overrides m_* with SIMD → syncToGlobal()
+```
+
+### 2.4 Dispatch Table Catalog
+
+The complete dispatch table — every function pointer in `g_vvenc`, its C scalar implementation, intrinsic override, and reserved NASM name — is specified in `source/Lib/CommonLib/Primitives.spec.md §3`.
+
+| Sub-struct | Module | Entries | Perf Share | syncToGlobal |
+|-----------|--------|---------|-----------|-------------|
+| `interp` | InterpolationFilter | 23 | 3.0% | ✅ |
+| `dist` | RdCost | 70 | 8.6% | ◐ (struct only) |
+| `pelbuf` | PelBufferOps | 7 | <1% | ◐ (struct only) |
+| `alf` | AdaptiveLoopFilter | 4 | 3.0% | ✅ |
+| `tr` | TrQuant + TCoeffOps | 11 | 1.6% | ✅ |
+| `affine` | AffineGradientSearch | 4 | 1.5% | ✅ |
+| `intra` | IntraPrediction | 6 | 2.4% | ✅ |
+| `bdof` | BDOF/PROF | 5 | 2.0% | ✅ |
+| `sao` | SampleAdaptiveOffset | 5 | <0.5% | ✅ |
+| `mctf` | MCTF | 2 | <0.5% | ✅ |
+| `dq` | DepQuant | 5 | 21.7% | ✅ |
+| `quant` | Quant | 2 | <0.5% | ✅ |
+| `lf` | LoopFilter | 2 | <0.5% | ✅ |
+
+### 2.5 NASM Assembly Support
+
+The build system detects `nasm` and enables `.asm` file compilation in `source/Lib/CommonLib/x86/`. Assembly functions register into `g_vvenc` via `setupAssemblyPrimitives()`. When `nasm` is not found, assembly is gracefully disabled.
+
+See `source/Lib/CommonLib/x86/asm-primitives.spec.md` for the assembly infrastructure specification.
 
 ## 3. System Architecture
 
@@ -60,6 +118,10 @@ graph TB
         Prediction["Prediction (IntraPred, InterPred)"]
         LoopFilters["Loop Filters (SAO, ALF, Deblock)"]
         Infrastructure["Infrastructure (BitStream, dtrace, Contexts)"]
+        subgraph Primitives["Primitive Dispatch"]
+            g_vvenc["g_vvenc central table<br/>146 function pointers"]
+            setupChain["vvenc_setup_primitives<br/>C refs / ASM / alias"]
+        end
     end
 
     subgraph Utilities
@@ -96,6 +158,15 @@ graph TB
     EncCu -.->|optional ML| FSP
     FSP --> CFE
     VVEncImpl --> DecCu
+
+    subgraph syncToGlobal
+        InterSearch -->|syncToGlobal| g_vvenc
+        IntraSearch -->|syncToGlobal| g_vvenc
+        EncCu -->|syncToGlobal| g_vvenc
+    end
+    g_vvenc --> setupChain
+    setupChain -->|setupCPrimitives| g_vvenc
+    setupChain -->|setupAssemblyPrimitives| g_vvenc
 ```
 
 ## 4. Detailed Data Flow
@@ -110,11 +181,17 @@ sequenceDiagram
     participant ES as EncSlice
     participant ECU as EncCu
     participant CL as CommonLib
+    participant GV as g_vvenc
 
     CLI->>CAPI: vvenc_encoder_create()
     CAPI->>Impl: new VVEncImpl
     Impl->>EL: init(encCfg)
     Note over EL: allocate picture buffers, init modules
+    EL->>EL: vvenc_setup_primitives(cpuMask)
+    Note over EL: setupCPrimitives populates g_vvenc C refs
+    Note over EL: setupAssemblyPrimitives overrides with NASM (Phase 2)
+    EL->>GV: each module init --> syncToGlobal()
+    Note over GV: g_vvenc populated with SIMD function pointers
 
     loop for each picture
         CLI->>CAPI: vvenc_encode(yuv, au, done)
@@ -173,7 +250,7 @@ This section documents the C++ idioms, naming conventions, and patterns used thr
 | Member string | `m_c` prefix | `m_cErrorString`, `m_cEncoderInfo` |
 | Private helpers | `x` prefix | `xGetAccessUnitsSize()`, `xUninitLib()` |
 | Constants | `static constexpr` | `MAX_CU_DEPTH`, `MAX_TB_SIZEY` |
-| Macros | `UPPER_CASE` | `VVENC_MAX_GOP`, `ENABLE_SIMD_OPT` |
+| Macros | `UPPER_CASE` | `VVENC_MAX_GOP`, `ENABLE_SIMD_OPT`, `ENABLE_ASM` |
 | C API types | `vvenc` prefix | `vvencEncoder`, `vvenc_config`, `vvencYUVBuffer` |
 | C API functions | `vvenc_` prefix | `vvenc_encoder_create()`, `vvenc_encode()` |
 
@@ -184,6 +261,18 @@ This section documents the C++ idioms, naming conventions, and patterns used thr
 - **In-class member initialization** — prefer `Type m_member = value` over constructor init-lists.
 - **Forward declarations** — used extensively for dependent classes (e.g., `class EncLib;`).
 - **`explicit`** — used on single-argument constructors where applicable.
+- **`syncToGlobal()` pattern** — modules with function pointer dispatch tables expose a `syncToGlobal()` method that copies per-instance `m_*` tables to the central `g_vvenc` dispatch table. Called at end of constructor and after SIMD init.
+
+### Assembly Conventions
+
+- **NASM/YASM** assembly files live in `source/Lib/CommonLib/x86/` alongside C++ SIMD intrinsics.
+- **Function naming**: `vvenc_<operation>_<size>_<isa>` (e.g., `vvenc_hadamard_8x16_avx2`).
+- **Registration**: Assembly functions are registered via `setupAssemblyPrimitives()` in `x86/asm-primitives.cpp`, overriding C/intrinsic entries in `g_vvenc`.
+- **Build**: CMake `enable_language(ASM_NASM)` with automatic fallback when `nasm` is absent.
+
+### ENABLE_ASM Flag
+
+The per-module `ENABLE_SIMD_OPT_*` macros have been consolidated into a single `ENABLE_ASM` flag (defined in `TypeDef.h`). All existing per-module aliases resolve to this flag:
 
 ### Method Signatures
 

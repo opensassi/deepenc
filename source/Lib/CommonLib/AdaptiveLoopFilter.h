@@ -45,6 +45,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "CommonDef.h"
+#include "Primitives.h"
 
 #include "Unit.h"
 #include "UnitTools.h"
@@ -101,6 +102,7 @@ public:
 
   AdaptiveLoopFilter( bool enableOpt = true );
   virtual ~AdaptiveLoopFilter() {}
+  void syncToGlobal();
   void        reconstructCoeffAPSs    ( CodingStructure& cs, bool luma, bool chroma, bool isRdo);
   void        reconstructCoeffFixedAPSs(CodingStructure& cs, bool luma, bool chroma, bool isRdo);
   void        reconstructCoeff(AlfParam& alfParam, ChannelType channel, const bool isRdo, const bool isRedo = false);

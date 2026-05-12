@@ -118,11 +118,20 @@ public:
                            PelUnitBuf &predSrc1);
 
   void initInterpolationFilter( bool enable );
-#if defined(TARGET_SIMD_X86)  && ENABLE_SIMD_OPT_MCIF
+#if defined(TARGET_SIMD_X86) && ENABLE_SIMD_OPT_MCIF
   void initInterpolationFilterX86();
   template <X86_VEXT vext>
   void _initInterpolationFilterX86();
 #endif
+#if defined(TARGET_SIMD_ARM) && ENABLE_SIMD_OPT_MCIF
+  void initInterpolationFilterARM();
+  template <ARM_VEXT vext>
+  void _initInterpolationFilterARM();
+#endif
+
+  // Sync per-instance dispatch tables to the global g_vvenc singleton.
+  // Called after constructor and after SIMD init to keep g_vvenc in sync.
+  void syncToGlobal();
 	
 #if defined(TARGET_SIMD_ARM)  && ENABLE_SIMD_OPT_MCIF
   void initInterpolationFilterARM();

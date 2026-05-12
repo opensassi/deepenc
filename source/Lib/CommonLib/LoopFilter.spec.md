@@ -44,6 +44,7 @@ private:
 public:
   LoopFilter();
   ~LoopFilter();
+  void syncToGlobal();                      // Sync per-instance dispatch tables to the global g_vvenc singleton
 
   static void calcFilterStrengthsCTU(CodingStructure& cs,
     const UnitArea& ctuArea, const bool clearLFP);

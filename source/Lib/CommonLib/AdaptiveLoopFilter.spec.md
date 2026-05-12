@@ -55,6 +55,7 @@ public:
 
   AdaptiveLoopFilter(bool enableOpt = true);
   virtual ~AdaptiveLoopFilter();
+  void syncToGlobal();
 
   void reconstructCoeffAPSs(CodingStructure& cs,
     bool luma, bool chroma, bool isRdo);

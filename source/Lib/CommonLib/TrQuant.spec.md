@@ -45,6 +45,9 @@ public:
   TrQuant();
   ~TrQuant();
 
+  void syncToGlobal();
+  // Note: TCoeffOps function pointers from TrQuant_EMT.h are also synced via g_tCoeffOps
+
   void init(
              const Quant* otherQuant,
              const int  rdoq,

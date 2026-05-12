@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "CommonDef.h"
+#include "Primitives.h"
 #include "Unit.h"
 #include "Contexts.h"
 #include "ContextModelling.h"
@@ -113,6 +114,7 @@ public:
 
 public:
 
+  void  syncToGlobal();
   void  setLambdas                ( const double lambdas[MAX_NUM_COMP] )   { for (uint32_t component = 0; component < MAX_NUM_COMP; component++) m_lambdas[component] = lambdas[component]; }
   void  selectLambda              ( const ComponentID compId )             { m_dLambda = m_lambdas[ compId ]; }
   void  getLambdas                ( double (&lambdas)[MAX_NUM_COMP]) const { for (uint32_t component = 0; component < MAX_NUM_COMP; component++) lambdas[component] = m_lambdas[component]; }

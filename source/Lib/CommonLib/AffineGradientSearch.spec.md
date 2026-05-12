@@ -27,6 +27,8 @@ public:
   template<bool b6Param>
   static void xEqualCoeffComputer   ( Pel* const pResi, const int resiStride, Pel **const ppDerivate, const int derivateBufStride, const int width, const int height, int64_t(*pEqualCoeff)[7]);
 
+  void syncToGlobal();
+
   AffineGradientSearch( bool enableOpt = true );
   ~AffineGradientSearch() {}
 

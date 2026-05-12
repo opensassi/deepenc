@@ -73,6 +73,7 @@ class MCTF : public EncStage
 public:
   MCTF( bool enableOpt = true );
   virtual ~MCTF();
+  void syncToGlobal();
 
   void init( const VVEncCfg& encCfg, bool isFinalPass, NoMallocThreadPool* threadPool );
 

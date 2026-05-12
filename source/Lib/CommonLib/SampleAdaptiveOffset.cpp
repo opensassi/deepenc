@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "SampleAdaptiveOffset.h"
+#include "Primitives.h"
 #include "UnitTools.h"
 #include "UnitPartitioner.h"
 #include "CodingStructure.h"
@@ -414,6 +415,14 @@ void SAOBlkParam::reset()
   }
 }
 
+void SampleAdaptiveOffset::syncToGlobal()
+{
+  g_vvenc.sao.calcEo0   = calcSaoStatisticsEo0;
+  g_vvenc.sao.calcEo90  = calcSaoStatisticsEo90;
+  g_vvenc.sao.calcEo135 = calcSaoStatisticsEo135;
+  g_vvenc.sao.calcEo45  = calcSaoStatisticsEo45;
+}
+
 SampleAdaptiveOffset::SampleAdaptiveOffset( bool enableOpt )
 {
   offsetBlock = offsetBlock_core;
@@ -432,6 +441,8 @@ SampleAdaptiveOffset::SampleAdaptiveOffset( bool enableOpt )
     initSampleAdaptiveOffsetARM();
 #endif
   }
+
+  syncToGlobal();
 }
 
 

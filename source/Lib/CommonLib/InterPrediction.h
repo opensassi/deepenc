@@ -45,6 +45,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include "Primitives.h"
 #include "InterpolationFilter.h"
 #include "Unit.h"
 #include "Picture.h"
@@ -129,6 +130,7 @@ public:
   virtual ~InterPredInterpolation();
   void destroy();
   void init( bool enableOpt = true );
+  void syncToGlobal();
 
   void    weightedGeoBlk  ( const ClpRngs &clpRngs, CodingUnit& cu, const uint8_t splitDir, int32_t channel,
                             PelUnitBuf &predDst, PelUnitBuf &predSrc0, PelUnitBuf &predSrc1);

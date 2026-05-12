@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "LoopFilter.h"
+#include "Primitives.h"
 #include "Slice.h"
 #include "Mv.h"
 #include "Unit.h"
@@ -355,6 +356,13 @@ LoopFilter::LoopFilter()
 #if defined( TARGET_SIMD_X86 ) && ENABLE_SIMD_DBLF
   initLoopFilterX86();
 #endif
+  syncToGlobal();
+}
+
+void LoopFilter::syncToGlobal()
+{
+  g_vvenc.lf.pelFilterLuma = xPelFilterLuma;
+  g_vvenc.lf.filterPandQ = xFilteringPandQ;
 }
 
 LoopFilter::~LoopFilter()

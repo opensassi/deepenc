@@ -63,6 +63,8 @@ public:
 
   static bool isSubblockVectorSpreadOverLimit(int a, int b, int c, int d, int predType);
   bool xIsAffineMvInRangeFPP(const CodingUnit& cu, const Mv* mv, int ifpLines, int precShift = MV_FRACTIONAL_BITS_INTERNAL);
+
+  void syncToGlobal();
 };
 
 }

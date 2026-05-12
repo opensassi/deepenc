@@ -146,6 +146,8 @@ public:
   void _initInterpolationFilterARM();
 #endif
 
+  void syncToGlobal();                  // Sync per-instance dispatch tables to the global g_vvenc singleton.
+
   // --- public entry points ---
 
   void filterN2_2D(const ComponentID compID, Pel const *src, int srcStride,

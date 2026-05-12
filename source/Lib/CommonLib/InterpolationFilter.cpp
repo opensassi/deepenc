@@ -52,6 +52,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "InterpolationFilter.h"
 #include "Rom.h"
+#include "Primitives.h"
 
 //! \ingroup CommonLib
 //! \{
@@ -230,6 +231,31 @@ InterpolationFilter::InterpolationFilter()
 
 //  m_weightedTriangleBlk = xWeightedTriangleBlk;
   m_weightedGeoBlk = xWeightedGeoBlk;
+}
+
+void InterpolationFilter::syncToGlobal()
+{
+  g_vvenc.interp.filterN2_2D   = m_filterN2_2D;
+  // weightedGeoBlk not yet in g_vvenc (depends on PelUnitBuf type)
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 2; j++)
+      for (int k = 0; k < 2; k++)
+      {
+        g_vvenc.interp.filterHor[i][j][k] = m_filterHor[i][j][k];
+        g_vvenc.interp.filterVer[i][j][k] = m_filterVer[i][j][k];
+      }
+  for (int i = 0; i < 2; i++)
+    for (int j = 0; j < 2; j++)
+    {
+      g_vvenc.interp.filterCopy[i][j]  = m_filterCopy[i][j];
+      g_vvenc.interp.filter4x4[i][j]   = m_filter4x4[i][j];
+      g_vvenc.interp.filter8xH[i][j]   = m_filter8xH[i][j];
+      g_vvenc.interp.filter16xH[i][j]  = m_filter16xH[i][j];
+    }
+  g_vvenc.interp.filter8xH[2][0]   = m_filter8xH[2][0];
+  g_vvenc.interp.filter8xH[2][1]   = m_filter8xH[2][1];
+  g_vvenc.interp.filter16xH[2][0]  = m_filter16xH[2][0];
+  g_vvenc.interp.filter16xH[2][1]  = m_filter16xH[2][1];
 }
 
 
@@ -1080,6 +1106,7 @@ void InterpolationFilter::initInterpolationFilter( bool enable )
 #ifdef TARGET_SIMD_ARM
     initInterpolationFilterARM();
 #endif
+    syncToGlobal();
   }
 #endif
 }

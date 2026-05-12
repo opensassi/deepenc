@@ -39,3 +39,6 @@ install_ml/
 
 # CTest temporary files
 Testing/
+
+# External project clones
+/external/

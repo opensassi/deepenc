@@ -46,6 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "MCTF.h"
+#include "CommonLib/Primitives.h"
 #include <math.h>
 #include "CommonLib/Picture.h"
 #include "CommonLib/dtrace_buffer.h"
@@ -545,6 +546,12 @@ double calcVarCore( const Pel* org, const ptrdiff_t origStride, const int w, con
   return variance / 256.0;
 }
 
+void MCTF::syncToGlobal()
+{
+  g_vvenc.mctf.motionErrorLumaIntX = m_motionErrorLumaIntX;
+  g_vvenc.mctf.motionErrorLumaInt8 = m_motionErrorLumaInt8;
+}
+
 MCTF::MCTF( bool enableOpt )
   : m_encCfg     ( nullptr )
   , m_threadPool ( nullptr )
@@ -575,6 +582,8 @@ MCTF::MCTF( bool enableOpt )
     initMCTF_ARM();
 #endif
   }
+
+  syncToGlobal();
 }
 
 MCTF::~MCTF()

@@ -161,6 +161,8 @@ public:
   void _initRdCostARM();
 #endif   // TARGET_SIMD_ARM
 
+
+
   void          setReshapeParams    ( const uint32_t* pPLUT, double chrWght)    { m_reshapeLumaLevelToWeightPLUT = pPLUT; m_chromaWeight = chrWght; }
   void          setDistortionWeight ( const ComponentID compID, const double distortionWeight ) { m_distortionWeight[compID] = distortionWeight; }
   void          setLambda           ( double dLambda, const BitDepths &bitDepths );

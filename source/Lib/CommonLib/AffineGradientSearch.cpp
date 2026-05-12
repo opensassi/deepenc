@@ -51,6 +51,7 @@ POSSIBILITY OF SUCH DAMAGE.
 // ====================================================================================================================
 
 #include "AffineGradientSearch.h"
+#include "Primitives.h"
 
 namespace vvenc {
 
@@ -79,6 +80,15 @@ namespace vvenc {
 #endif
     }
 #endif // ENABLE_SIMD_OPT_AFFINE_ME
+    syncToGlobal();
+  }
+
+  void AffineGradientSearch::syncToGlobal()
+  {
+    g_vvenc.affine.horizontalSobelFilter = m_HorizontalSobelFilter;
+    g_vvenc.affine.verticalSobelFilter   = m_VerticalSobelFilter;
+    g_vvenc.affine.equalCoeffComputer[0] = m_EqualCoeffComputer[0];
+    g_vvenc.affine.equalCoeffComputer[1] = m_EqualCoeffComputer[1];
   }
 
   void AffineGradientSearch::xHorizontalSobelFilter(Pel* const pPred, const int predStride, Pel *const pDerivate, const int derivateBufStride, const int width, const int height)

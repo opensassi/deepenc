@@ -4,6 +4,8 @@
 
 `InitX86.cpp` (no corresponding `.h` — the file compiles as part of `CommonLib` and is guarded by `#ifdef TARGET_SIMD_X86`) initialises per-module SIMD function pointers for each subsystem of the VVenC encoder. Each module exposes an `init*X86()` method that calls `read_x86_extension_flags()` from `CommonDefX86.h`, then dispatches to templated `_init*X86<SIMDLevel>()` functions that install optimised AVX2 or SSE41 routines into function pointer tables.
 
+Modules that have explicit function pointer dispatch (InterpolationFilter, DepQuant, IntraPrediction, etc.) also call `syncToGlobal()` after populating their tables, copying function pointers to the central `g_vvenc` dispatch table. See `Primitives.spec.md §3` for the full dispatch table catalog.
+
 **Dependencies**: `CommonDefX86.h`, `InterpolationFilter.h`, `TrQuant.h`, `RdCost.h`, `Unit.h`, `LoopFilter.h`, `AdaptiveLoopFilter.h`, `SampleAdaptiveOffset.h`, `InterPrediction.h`, `IntraPrediction.h`, `AffineGradientSearch.h`, `MCTF.h`, `TrQuant_EMT.h`, `QuantRDOQ2.h`, `SEIFilmGrainAnalyzer.h`.
 
 **Lifecycle**: Called once during encoder construction. Each `init*X86` is idempotent (some use `isInitX86Done` guard). The dispatch reads CPU capabilities and selects the highest available SIMD level. On non-x86 targets or when `ENABLE_SIMD_OPT` is off, the entire file is excluded from compilation.

@@ -42,6 +42,21 @@ if( VVENC_ENABLE_X86_SIMD )
     # get avx2 source files
     file( GLOB AVX2_SRC_FILES CONFIGURE_DEPENDS "../CommonLib/x86/avx2/*.cpp" )
   endif()
+
+  # ---- NASM/YASM assembly support (Phase 2) ----
+  # Detects nasm and enables .asm file compilation.
+  # Assembly files live in source/Lib/CommonLib/x86/ alongside C++ SIMD files.
+  # They are compiled with the NASM assembler (not the C++ compiler) and
+  # are added directly to the main library, avoiding C++-specific compile flags.
+  find_program( VVENC_NASM nasm )
+  if( VVENC_NASM )
+    enable_language( ASM_NASM )
+    file( GLOB ASM_SRC_FILES CONFIGURE_DEPENDS "../CommonLib/x86/*.asm" )
+    message( STATUS "vvenc: NASM found at ${VVENC_NASM} — assembly support enabled" )
+  else()
+    set( ASM_SRC_FILES "" )
+    message( STATUS "vvenc: NASM not found — assembly primitives disabled" )
+  endif()
 endif()
 
 if( VVENC_ENABLE_ARM_SIMD )
@@ -187,7 +202,7 @@ if( MSVC )
   set( RESOURCE_FILE ${LIB_NAME}.rc )
 endif()
 
-add_library( ${LIB_NAME} ${SRC_FILES} $<$<TARGET_EXISTS:${LIB_NAME}_x86_simd>:$<TARGET_OBJECTS:${LIB_NAME}_x86_simd>> $<$<TARGET_EXISTS:${LIB_NAME}_arm_simd>:$<TARGET_OBJECTS:${LIB_NAME}_arm_simd>> ${INC_FILES} ${NATVIS_FILES} ${RESOURCE_FILE} )
+add_library( ${LIB_NAME} ${SRC_FILES} ${ASM_SRC_FILES} $<$<TARGET_EXISTS:${LIB_NAME}_x86_simd>:$<TARGET_OBJECTS:${LIB_NAME}_x86_simd>> $<$<TARGET_EXISTS:${LIB_NAME}_arm_simd>:$<TARGET_OBJECTS:${LIB_NAME}_arm_simd>> ${INC_FILES} ${NATVIS_FILES} ${RESOURCE_FILE} )
 
 target_compile_definitions( ${LIB_NAME} PUBLIC $<$<STREQUAL:$<TARGET_PROPERTY:${LIB_NAME},TYPE>,SHARED_LIBRARY>:${LIB_NAME_UC}_DYN_LINK> )
 
