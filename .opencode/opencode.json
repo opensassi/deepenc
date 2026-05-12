@@ -7,7 +7,8 @@
     "session-evaluation": "allow",
     "git": "allow",
     "profiler": "allow",
-    "issue": "allow"
+    "issue": "allow",
+    "asm-optimizer": "allow"
   },
   "mcp": {
     "playwright": {

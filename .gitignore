@@ -42,3 +42,6 @@ Testing/
 
 # External project clones
 /external/
+
+# ASM optimizer baseline profiles (generated, not committed)
+/perf/baseline/
