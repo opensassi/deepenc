@@ -795,10 +795,75 @@ void xPredIntraPlanar_SIMD( PelBuf& pDst, const CPelBuf& pSrc)
 
   const Pel* ptrSrc =pSrc.buf;
 
-  int leftColumn,rightColumn;
-  Pel tmp;
   int topRight = pSrc.at( width + 1, 0 );
 
+#if USE_AVX2
+  if( vext >= AVX2 && width >= 16 )
+  {
+    Pel bottomLeft = pSrc.at( height+1, 1 );
+    __m256i bottomLeft16 = _mm256_set1_epi16( (int16_t)bottomLeft );
+    __m256i zero = _mm256_setzero_si256();
+    __m256i sixteen = _mm256_set1_epi16( 16 );
+    __m256i offset32 = _mm256_set1_epi32( offset );
+    __m128i vLog2W    = _mm_cvtsi32_si128( log2W );
+    __m128i vLog2H    = _mm_cvtsi32_si128( log2H );
+    __m128i vFinalShift = _mm_cvtsi32_si128( finalShift );
+
+    for( int y = 0; y < height; y++ )
+    {
+      int leftColumn  = pSrc.at( y + 1, 1 ) << log2W;
+      int rightColumn = topRight - pSrc.at( y + 1, 1 );
+      __m256i leftColumn32   = _mm256_set1_epi32( leftColumn );
+      __m256i rightcolumn16  = _mm256_set1_epi16( (int16_t)rightColumn );
+      __m256i y16            = _mm256_set1_epi16( (int16_t)( y + 1 ) );
+      __m256i x16 = _mm256_set_epi16( 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 );
+
+      for( int x = 0; x < width; x += 16 )
+      {
+        __m256i topRow16 = _mm256_loadu_si256( (const __m256i*)( ptrSrc + x + 1 ) );
+        __m256i bottomRow16L = _mm256_sub_epi16( bottomLeft16, topRow16 );
+
+        __m256i tmpH = _mm256_mulhi_epi16( bottomRow16L, y16 );
+        __m256i tmpL = _mm256_mullo_epi16( bottomRow16L, y16 );
+        bottomRow16L = _mm256_unpacklo_epi16( tmpL, tmpH );
+        __m256i bottomRow16H = _mm256_unpackhi_epi16( tmpL, tmpH );
+
+        __m256i topRow32L = _mm256_unpacklo_epi16( topRow16, zero );
+        __m256i topRow32H = _mm256_unpackhi_epi16( topRow16, zero );
+        topRow32L = _mm256_sll_epi32( topRow32L, vLog2H );
+        topRow32H = _mm256_sll_epi32( topRow32H, vLog2H );
+        topRow32L = _mm256_add_epi32( topRow32L, bottomRow16L );
+        topRow32H = _mm256_add_epi32( topRow32H, bottomRow16H );
+
+        tmpL = _mm256_mullo_epi16( rightcolumn16, x16 );
+        tmpH = _mm256_mulhi_epi16( rightcolumn16, x16 );
+        __m256i horpred32L = _mm256_unpacklo_epi16( tmpL, tmpH );
+        __m256i horpred32H = _mm256_unpackhi_epi16( tmpL, tmpH );
+        horpred32L = _mm256_add_epi32( leftColumn32, horpred32L );
+        horpred32H = _mm256_add_epi32( leftColumn32, horpred32H );
+
+        horpred32L = _mm256_sll_epi32( horpred32L, vLog2H );
+        horpred32H = _mm256_sll_epi32( horpred32H, vLog2H );
+        topRow32L  = _mm256_sll_epi32( topRow32L,  vLog2W );
+        topRow32H  = _mm256_sll_epi32( topRow32H,  vLog2W );
+        horpred32L = _mm256_add_epi32( horpred32L, topRow32L );
+        horpred32H = _mm256_add_epi32( horpred32H, topRow32H );
+        horpred32L = _mm256_add_epi32( horpred32L, offset32 );
+        horpred32H = _mm256_add_epi32( horpred32H, offset32 );
+        horpred32L = _mm256_srl_epi32( horpred32L, vFinalShift );
+        horpred32H = _mm256_srl_epi32( horpred32H, vFinalShift );
+
+        __m256i result = _mm256_packs_epi32( horpred32L, horpred32H );
+        _mm256_storeu_si256( (__m256i*)( pred + y * stride + x ), result );
+        x16 = _mm256_add_epi16( x16, sixteen );
+      }
+    }
+    return;
+  }
+#endif
+
+  int leftColumn,rightColumn;
+  Pel tmp;
   tmp=pSrc.at( height+1, 1 );
   const __m128i bottomLeft16 = _mm_set_epi16(tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp);
   const __m128i zero = _mm_xor_si128(bottomLeft16,bottomLeft16);

@@ -1194,7 +1194,26 @@ void removeHighFreq_SSE(int16_t* src0, int src0Stride, const int16_t* src1, int 
 {
  if (W == 8)
  {
-   // TODO: AVX2 impl
+#if USE_AVX2
+   if( vext >= AVX2 && width >= 16 )
+   {
+     for (int row = 0; row < height; row++)
+     {
+       for (int col = 0; col < width; col += 16)
+       {
+         __m256i vsrc0 = _mm256_load_si256((const __m256i *)&src0[col]);
+         __m256i vsrc1 = _mm256_load_si256((const __m256i *)&src1[col]);
+
+         vsrc0 = _mm256_sub_epi16(_mm256_slli_epi16(vsrc0, 1), vsrc1);
+         _mm256_store_si256((__m256i *)&src0[col], vsrc0);
+       }
+
+       src0 += src0Stride;
+       src1 += src1Stride;
+     }
+   }
+   else
+#endif
    {
      for (int row = 0; row < height; row++)
      {
@@ -1244,20 +1263,43 @@ void sub_SSE( const Pel* src0, int src0Stride, const Pel* src1, int src1Stride, 
 {
   if( W == 8 )
   {
-    while( height-- )
+#if USE_AVX2
+    if( vext >= AVX2 && width >= 16 )
     {
-      for( int x = 0; x < width; x += 8 )
+      while( height-- )
       {
-        __m128i vsrc0 = _mm_load_si128( ( const __m128i* ) &src0[x] );
-        __m128i vsrc1 = _mm_load_si128( ( const __m128i* ) &src1[x] );
-        __m128i vdest = _mm_sub_epi16 ( vsrc0, vsrc1 );
+        for( int x = 0; x < width; x += 16 )
+        {
+          __m256i vsrc0 = _mm256_load_si256( ( const __m256i* ) &src0[x] );
+          __m256i vsrc1 = _mm256_load_si256( ( const __m256i* ) &src1[x] );
+          __m256i vdest = _mm256_sub_epi16( vsrc0, vsrc1 );
 
-        _mm_storeu_si128( ( __m128i* ) &dest[x], vdest );
+          _mm256_storeu_si256( ( __m256i* ) &dest[x], vdest );
+        }
+
+        src0 += src0Stride;
+        src1 += src1Stride;
+        dest += destStride;
       }
+    }
+    else
+#endif
+    {
+      while( height-- )
+      {
+        for( int x = 0; x < width; x += 8 )
+        {
+          __m128i vsrc0 = _mm_load_si128( ( const __m128i* ) &src0[x] );
+          __m128i vsrc1 = _mm_load_si128( ( const __m128i* ) &src1[x] );
+          __m128i vdest = _mm_sub_epi16 ( vsrc0, vsrc1 );
 
-      src0 += src0Stride;
-      src1 += src1Stride;
-      dest += destStride;
+          _mm_storeu_si128( ( __m128i* ) &dest[x], vdest );
+        }
+
+        src0 += src0Stride;
+        src1 += src1Stride;
+        dest += destStride;
+      }
     }
   }
   else if( W == 4 )

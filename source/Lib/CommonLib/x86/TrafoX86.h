@@ -809,6 +809,66 @@ void simdInvLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32_t in
   const int       trSize        = ( size > 4 ) ? 48 : 16;
   int*            out           = dst;
 
+#if USE_AVX2
+  if( vext >= AVX2 && zeroOutSize >= 16 )
+  {
+    const __m128i vzero128 = _mm_setzero_si128();
+    const __m128i vmin     = _mm_set1_epi32( outputMinimum );
+    const __m128i vmax     = _mm_set1_epi32( outputMaximum );
+
+    for( int j = 0; j < trSize; j += 4, out += 4 )
+    {
+      __m128i vsum4[4];
+
+      for( int k = 0; k < 4; k++, trMat += zeroOutSize )
+      {
+        const int8_t* trMatTmp = trMat;
+        int* srcPtr = src;
+
+        __m128i vcur_lo = _mm_setzero_si128();
+        __m128i vcur_hi = _mm_setzero_si128();
+
+        for( int i = 0; i < zeroOutSize; i += 16, srcPtr += 16, trMatTmp += 16 )
+        {
+          __m128i vsrc = _mm_loadu_si128( ( const __m128i* ) srcPtr );
+          __m128i vtr  = _vv_loadl_epi64( ( const __m128i* ) trMatTmp );
+          vtr  = _mm_cvtepi8_epi16( vtr );
+          __m128i vtmp = _mm_cvtepi16_epi32( vtr );
+          vtmp = _mm_mullo_epi32( vsrc, vtmp );
+          vcur_lo = _mm_add_epi32( vtmp, vcur_lo );
+
+          vsrc = _mm_loadu_si128( ( const __m128i* ) &srcPtr[4] );
+          vtmp = _mm_cvtepi16_epi32( _mm_unpackhi_epi64( vtr, vzero128 ) );
+          vtmp = _mm_mullo_epi32( vsrc, vtmp );
+          vcur_lo = _mm_add_epi32( vtmp, vcur_lo );
+
+          vsrc = _mm_loadu_si128( ( const __m128i* ) &srcPtr[8] );
+          vtr  = _vv_loadl_epi64( ( const __m128i* ) &trMatTmp[8] );
+          vtr  = _mm_cvtepi8_epi16( vtr );
+          vtmp = _mm_cvtepi16_epi32( vtr );
+          vtmp = _mm_mullo_epi32( vsrc, vtmp );
+          vcur_hi = _mm_add_epi32( vtmp, vcur_hi );
+
+          vsrc = _mm_loadu_si128( ( const __m128i* ) &srcPtr[12] );
+          vtmp = _mm_cvtepi16_epi32( _mm_unpackhi_epi64( vtr, vzero128 ) );
+          vtmp = _mm_mullo_epi32( vsrc, vtmp );
+          vcur_hi = _mm_add_epi32( vtmp, vcur_hi );
+        }
+
+        vsum4[k] = _mm_add_epi32( vcur_lo, vcur_hi );
+      }
+
+      __m128i vout = _mm_hadd_epi32( _mm_hadd_epi32( vsum4[0], vsum4[1] ), _mm_hadd_epi32( vsum4[2], vsum4[3] ) );
+      vout = _mm_add_epi32( vout, _mm_set1_epi32( 64 ) );
+      vout = _mm_srai_epi32( vout, 7 );
+      vout = _mm_min_epi32( _mm_max_epi32( vmin, vout ), vmax );
+
+      _mm_storeu_si128( ( __m128i* ) out, vout );
+    }
+    return;
+  }
+#endif
+
   const __m128i vzero = _mm_setzero_si128();
   const __m128i vmin  = _mm_set1_epi32( outputMinimum );
   const __m128i vmax  = _mm_set1_epi32( outputMaximum );
@@ -839,7 +899,7 @@ void simdInvLfnstNxN( int* src, int* dst, const uint32_t mode, const uint32_t in
 
         vsrc = _mm_loadu_si128( ( const __m128i* ) &srcPtr[4] );
         vtmp = _mm_cvtepi16_epi32( _mm_unpackhi_epi64( vtr, vzero ) );
-      
+       
         vtmp = _mm_mullo_epi32( vsrc, vtmp );
         vcur = _mm_add_epi32( vtmp, vcur );
       }

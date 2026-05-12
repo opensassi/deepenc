@@ -22,3 +22,9 @@ src/**/.artifacts/
 test/data/park_joy_*.yuv
 .profiler/
 *.y4m
+
+# microbenchmarks (ephemeral standalone benchmarks)
+/microbench/
+!/microbench/harness.h
+!/microbench/Makefile
+!/microbench/run_all.sh
