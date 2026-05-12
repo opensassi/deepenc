@@ -31,15 +31,9 @@ done
 $DO_PSNR || $DO_SSIM || $DO_VMAF || DO_PSNR=true
 
 # --- Determine source file ---
-if [[ "$RESOLUTION" == "$DEFAULT_RESOLUTION" ]]; then
-    SOURCE="$DATA_DIR/park_joy_1080p${FRAMES}.yuv"
-    LABEL="park_joy_1080p${FRAMES}_${PRESET}"
-    W=1920; H=1080
-else
-    W="${RESOLUTION%%x*}"; H="${RESOLUTION##*x}"
-    SOURCE="$DATA_DIR/park_joy_${RESOLUTION}f${FRAMES}.yuv"
-    LABEL="park_joy_${RESOLUTION}f${FRAMES}_${PRESET}"
-fi
+W="${RESOLUTION%%x*}"; H="${RESOLUTION##*x}"
+SOURCE="$DATA_DIR/park_joy_${RESOLUTION}f${FRAMES}.yuv"
+LABEL="park_joy_${RESOLUTION}f${FRAMES}_${PRESET}"
 
 if [[ ! -f "$SOURCE" ]]; then
     log_error "Source not found: $SOURCE. Run setup.sh first."

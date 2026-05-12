@@ -47,7 +47,7 @@ if [[ ! -f "$SOURCE_FILE" ]]; then
         log_info "Y4M already cached: $Y4M_FILE"
     fi
 
-    log_info "Converting Y4M to raw YUV (first $FRAMES frames, 1920x1080 4:2:0)..."
+    log_info "Converting Y4M to raw YUV (first $FRAMES frames at 1920x1080; use --resize for lower resolutions)..."
     ffmpeg -i "$Y4M_FILE" -vframes "$FRAMES" -f rawvideo -pix_fmt yuv420p -y "$SOURCE_FILE" 2>/dev/null || {
         log_error "ffmpeg conversion failed. Is ffmpeg installed?"
         exit 1

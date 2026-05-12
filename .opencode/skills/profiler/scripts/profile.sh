@@ -22,16 +22,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Determine source file ---
-if [[ "$RESOLUTION" == "$DEFAULT_RESOLUTION" ]]; then
-    SOURCE="$DATA_DIR/park_joy_1080p${FRAMES}.yuv"
-    LABEL="park_joy_1080p${FRAMES}_${PRESET}"
-    RES_OPTS="--size 1920x1080"
-else
-    W="${RESOLUTION%%x*}"; H="${RESOLUTION##*x}"
-    SOURCE="$DATA_DIR/park_joy_${RESOLUTION}f${FRAMES}.yuv"
-    LABEL="park_joy_${RESOLUTION}f${FRAMES}_${PRESET}"
-    RES_OPTS="--size ${W}x${H}"
-fi
+W="${RESOLUTION%%x*}"; H="${RESOLUTION##*x}"
+SOURCE="$DATA_DIR/park_joy_${RESOLUTION}f${FRAMES}.yuv"
+LABEL="park_joy_${RESOLUTION}f${FRAMES}_${PRESET}"
+RES_OPTS="--size ${W}x${H}"
 
 if [[ ! -f "$SOURCE" ]]; then
     log_error "Source not found: $SOURCE"

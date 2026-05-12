@@ -32,7 +32,7 @@ Verify the profiling toolchain. Runs the following checks and reports pass/fail:
 
 - `perf` is installed and accessible
 - Encoder Release binary exists (check `bin/release-static/` or build tree)
-- `test/data/park_joy_1080p50.yuv` exists (or any `test/data/park_joy_*.yuv`)
+- `test/data/park_joy_1080p10.yuv` exists (or any `test/data/park_joy_*.yuv`)
 - `scripts/FlameGraph/stackcollapse-perf.pl` and `flamegraph.pl` exist
 - `ffmpeg` + `vvenc` decoder available (needed for `--vmaf`)
 - `vmaf` tool available (needed for `--vmaf`)
@@ -46,26 +46,26 @@ Download and prepare test data for profiling.
 
 Usage:
 ```
-setup                        # default: park_joy 1080p, 50 frames
-setup --frames 100           # override frame count
-setup --resize 1280x720      # also produce 720p variant via ffmpeg
+setup                        # default: park_joy 1080p, 10 frames
+setup --frames 50            # override frame count
+setup --resize 1280x720      # also produce 720p variant via ffmpeg (default profile resolution)
 setup --resize 832x480       # also produce 480p variant
 setup --resize 640x360       # also produce 360p variant
 ```
 
 What it does:
 1. Downloads `park_joy` 1080p YUV from Xiph.org (`https://media.xiph.org/video/derf/`)
-2. Extracts the first N frames (default 50) to `test/data/park_joy_1080p{N}.yuv`
-3. If `--resize` given, runs `ffmpeg -s 1920x1080 -i <source> -vf scale=W:H -frames:v N` for each resolution
+2. Extracts the first N frames (default 10) to `test/data/park_joy_1080p{N}.yuv`
+3. If `--resize` given, runs `ffmpeg -s 1920x1080 -i <source> -vf scale=W:H -frames:v N` for each resolution (e.g. `setup --resize 1280x720` to prepare the default profiling resolution)
 4. Creates `.profiler/` directory structure: `flamegraphs/`, `benchmarks/`, `perf_archives/`, `reports/`
 5. Creates `.gitignore` entries for `test/data/park_joy_*.yuv` and `.profiler/` if not present
 6. Checks that `scripts/FlameGraph/` exists; if not, offers to clone and copy
 
 Example output files:
 ```
-test/data/park_joy_1080p50.yuv        (default)
-test/data/park_joy_1280x720f50.yuv     (--resize 1280x720)
-test/data/park_joy_832x480f50.yuv      (--resize 832x480)
+test/data/park_joy_1080p10.yuv        (full-res source, 10 frames)
+test/data/park_joy_1280x720f10.yuv     (default profile resolution)
+test/data/park_joy_832x480f10.yuv      (--resize 832x480)
 ```
 
 ### `profile`
@@ -74,11 +74,11 @@ Run `perf record` on an encoder encode session and produce a flamegraph.
 
 Usage:
 ```
-profile                               # default: park_joy 1080p50, medium preset, cycles
-profile --res 1280x720                # profile at 720p
+profile                               # default: park_joy 1280x720f10, medium preset, cycles
+profile --res 832x480                 # profile at 480p instead
 profile --preset fast                 # override preset
 profile --events cache-misses,branch-misses  # custom perf events
-profile --frames 100                  # override frame count
+profile --frames 50                   # override frame count
 ```
 
 What it does:
@@ -90,7 +90,7 @@ What it does:
 
 Output artifacts:
 ```
-.profiler/perf_archives/park_joy_1080p50_medium/
+.profiler/perf_archives/park_joy_1280x720f10_medium/
 ├── perf.data          (raw, for LLM/tooling analysis)
 ├── perf.stat          (hardware counter summary)
 ├── folded.txt         (collapsed stacks for diffing)
@@ -128,7 +128,7 @@ Output:
 JSON structure:
 ```json
 {
-  "label": "park_joy_1080p50_medium",
+  "label": "park_joy_1280x720f10_medium",
   "timestamp": "...",
   "iterations": [
     {
@@ -152,7 +152,7 @@ JSON structure:
     "psnr_y_avg": 38.41
   },
   "config": {
-    "source": "test/data/park_joy_1080p50.yuv",
+    "source": "test/data/park_joy_1280x720f10.yuv",
     "preset": "medium",
     "frames": 50,
     "metrics": ["psnr"]
@@ -217,7 +217,7 @@ Produces:
 
 ## Design Principles
 
-- **Default workload**: `park_joy` 1080p, 50 frames, `--preset medium`
+- **Default workload**: `park_joy` 1280x720, 10 frames, `--preset medium`
 - **Resized variants** via `setup --resize WxH` for fast iteration: 1280x720, 832x480, 640x360
 - **Release build only** (`CMAKE_BUILD_TYPE=Release`); verify `-fno-omit-frame-pointer` in CMake flags
 - **5 iterations minimum** for benchmark; raw `perf.data` retained for LLM analysis

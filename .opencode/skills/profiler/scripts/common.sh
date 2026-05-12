@@ -13,8 +13,8 @@ FLAMEGRAPH_DIR="$PROJECT_ROOT/scripts/FlameGraph"
 
 # --- Default workload ---
 DEFAULT_SOURCE="park_joy"
-DEFAULT_RESOLUTION="1920x1080"
-DEFAULT_FRAMES=50
+DEFAULT_RESOLUTION="1280x720"
+DEFAULT_FRAMES=10
 DEFAULT_PRESET="medium"
 
 # --- Benchmark defaults ---
