@@ -27,6 +27,7 @@ test/data/park_joy_*.yuv
 /ml-models/
 /ml-models-v2/
 /test/data/
+/perf/microbenchmarks/
 
 # microbenchmarks (ephemeral standalone benchmarks)
 /microbench/

@@ -1,0 +1,53 @@
+Warming up...
+Bit-exactness check:
+  [8xN] bit-exact: YES
+  [16xN] bit-exact: YES
+  [32xN] bit-exact: YES
+  [64xN] bit-exact: YES
+
+Benchmarking 2000000 iterations...
+C++ SIMD (AVX2) baseline:
+  [8xN]
+    C++:  25.738 ms  77.706 M iter/s  12.869 ns/call
+  [16xN]
+    C++:  28.038 ms  71.332 M iter/s  14.019 ns/call
+  [32xN]
+    C++:  64.418 ms  31.047 M iter/s  32.209 ns/call
+  [64xN]
+    C++:  236.898 ms  8.442 M iter/s  118.449 ns/call
+    ASM:  207.640 ms  9.632 M iter/s  103.820 ns/call  speedup: 1.141x
+
+Done.
+
+ Performance counter stats for '/home/pc/projects/deepenc/perf/microbenchmarks/sad/sad_microbench 2000000':
+
+       565,959,912      task-clock:u                     #    1.004 CPUs utilized             
+                 0      context-switches:u               #    0.000 /sec                      
+                 0      cpu-migrations:u                 #    0.000 /sec                      
+               223      page-faults:u                    #  394.021 /sec                      
+     <not counted>      cpu_atom/instructions/u                                                 (0.00%)
+     6,386,549,754      cpu_core/instructions/u          #    3.02  insn per cycle              (35.44%)
+     <not counted>      cpu_atom/cycles/u                                                       (0.00%)
+     2,115,079,373      cpu_core/cycles/u                #    3.737 GHz                         (42.68%)
+     <not counted>      cpu_atom/branches/u                                                     (0.00%)
+       454,119,801      cpu_core/branches/u              #  802.389 M/sec                       (49.92%)
+     <not counted>      cpu_atom/branch-misses/u                                                (0.00%)
+           406,339      cpu_core/branch-misses/u         #    0.09% of all branches             (57.16%)
+ #     35.5 %  tma_backend_bound      
+                                                  #      1.2 %  tma_bad_speculation    
+                                                  #      4.5 %  tma_frontend_bound     
+                                                  #     58.8 %  tma_retiring             (64.41%)
+     <not counted>      cpu_atom/L1-dcache-loads/u                                              (0.00%)
+     2,046,344,495      cpu_core/L1-dcache-loads/u       #    3.616 G/sec                       (71.73%)
+           319,117      cpu_core/L1-dcache-load-misses/u #    0.02% of all L1-dcache accesses   (71.74%)
+     <not counted>      cpu_atom/LLC-loads/u                                                    (0.00%)
+            16,985      cpu_core/LLC-loads/u             #   30.011 K/sec                       (71.73%)
+     <not counted>      cpu_atom/LLC-load-misses/u                                              (0.00%)
+            10,689      cpu_core/LLC-load-misses/u       #   62.93% of all LL-cache accesses    (71.73%)
+     <not counted>      cpu_atom/L1-icache-loads/u                                              (0.00%)
+     <not counted>      cpu_atom/L1-icache-load-misses/u                                        (0.00%)
+            12,024      cpu_core/L1-icache-load-misses/u                                        (28.27%)
+     <not counted>      cpu_atom/dTLB-loads/u                                                   (0.00%)
+     2,049,216,042      cpu_core/dTLB-loads/u            #    3.621 G/sec                       (28.26%)
+     <not counted>      cpu_atom/dTLB-load-misses/u                                             (0.00%)
+               449      cpu_core/dTLB-load-misses/u     

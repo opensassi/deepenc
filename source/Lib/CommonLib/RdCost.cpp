@@ -146,6 +146,10 @@ void RdCost::create( bool enableOpt )
 #ifdef TARGET_SIMD_ARM
     initRdCostARM();
 #endif
+#ifdef TARGET_SIMD_X86
+    extern void applyRdCostAsmOverrides(RdCost&);
+    applyRdCostAsmOverrides(*this);
+#endif
   }
 #endif
 

@@ -1,0 +1,354 @@
+
+/home/pc/projects/deepenc/perf/microbenchmarks/sad/sad_microbench:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+00000000000238b0 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi16ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE>:
+   238b0:	f3 0f 1e fa          	endbr64
+   238b4:	8b 4f 44             	mov    0x44(%rdi),%ecx
+   238b7:	44 8b 4f 10          	mov    0x10(%rdi),%r9d
+   238bb:	41 ba 01 00 00 00    	mov    $0x1,%r10d
+   238c1:	44 8b 47 28          	mov    0x28(%rdi),%r8d
+   238c5:	44 8b 5f 04          	mov    0x4(%rdi),%r11d
+   238c9:	48 8b 47 08          	mov    0x8(%rdi),%rax
+   238cd:	48 8b 57 20          	mov    0x20(%rdi),%rdx
+   238d1:	41 d3 e2             	shl    %cl,%r10d
+   238d4:	41 d3 e1             	shl    %cl,%r9d
+   238d7:	41 d3 e0             	shl    %cl,%r8d
+   238da:	45 85 db             	test   %r11d,%r11d
+   238dd:	7e 69                	jle    23948 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi16ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x98>
+   238df:	bf 01 00 00 00       	mov    $0x1,%edi
+   238e4:	4d 63 c9             	movslq %r9d,%r9
+   238e7:	4d 63 c0             	movslq %r8d,%r8
+   238ea:	31 f6                	xor    %esi,%esi
+   238ec:	c5 f9 6e d7          	vmovd  %edi,%xmm2
+   238f0:	4d 01 c9             	add    %r9,%r9
+   238f3:	c5 f1 ef c9          	vpxor  %xmm1,%xmm1,%xmm1
+   238f7:	4d 01 c0             	add    %r8,%r8
+   238fa:	c4 e2 7d 79 d2       	vpbroadcastw %xmm2,%ymm2
+   238ff:	90                   	nop
+   23900:	c5 fe 6f 18          	vmovdqu (%rax),%ymm3
+   23904:	c5 e5 f9 02          	vpsubw (%rdx),%ymm3,%ymm0
+   23908:	44 01 d6             	add    %r10d,%esi
+   2390b:	4c 01 c8             	add    %r9,%rax
+   2390e:	4c 01 c2             	add    %r8,%rdx
+   23911:	c4 e2 7d 1d c0       	vpabsw %ymm0,%ymm0
+   23916:	c5 fd f5 c2          	vpmaddwd %ymm2,%ymm0,%ymm0
+   2391a:	c5 fd fe c1          	vpaddd %ymm1,%ymm0,%ymm0
+   2391e:	c5 fd 6f c8          	vmovdqa %ymm0,%ymm1
+   23922:	44 39 de             	cmp    %r11d,%esi
+   23925:	7c d9                	jl     23900 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi16ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x50>
+   23927:	c4 e3 7d 39 c9 01    	vextracti128 $0x1,%ymm1,%xmm1
+   2392d:	c5 f9 fe c1          	vpaddd %xmm1,%xmm0,%xmm0
+   23931:	c4 e2 79 02 c0       	vphaddd %xmm0,%xmm0,%xmm0
+   23936:	c4 e2 79 02 c0       	vphaddd %xmm0,%xmm0,%xmm0
+   2393b:	c5 f9 7e c0          	vmovd  %xmm0,%eax
+   2393f:	d3 e0                	shl    %cl,%eax
+   23941:	c5 f8 77             	vzeroupper
+   23944:	c3                   	ret
+   23945:	0f 1f 00             	nopl   (%rax)
+   23948:	c5 f9 ef c0          	vpxor  %xmm0,%xmm0,%xmm0
+   2394c:	c5 f1 ef c9          	vpxor  %xmm1,%xmm1,%xmm1
+   23950:	eb d5                	jmp    23927 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi16ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x77>
+   23952:	66 2e 0f 1f 84 00 00 	cs nopw 0x0(%rax,%rax,1)
+   23959:	00 00 00 
+   2395c:	0f 1f 40 00          	nopl   0x0(%rax)
+
+0000000000023960 <_ZN5vvenc6RdCost16xGetSSE_NxN_SIMDILi4ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE>:
+   23960:	f3 0f 1e fa          	endbr64
+   23964:	44 8b 47 04          	mov    0x4(%rdi),%r8d
+   23968:	48 8b 47 08          	mov    0x8(%rdi),%rax
+   2396c:	48 8b 57 20          	mov    0x20(%rdi),%rdx
+   23970:	8b 4f 10             	mov    0x10(%rdi),%ecx
+   23973:	48 63 77 28          	movslq 0x28(%rdi),%rsi
+   23977:	45 85 c0             	test   %r8d,%r8d
+   2397a:	7e 4c                	jle    239c8 <_ZN5vvenc6RdCost16xGetSSE_NxN_SIMDILi4ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x68>
+   2397c:	48 63 f9             	movslq %ecx,%rdi
+   2397f:	48 01 f6             	add    %rsi,%rsi
+   23982:	c5 f1 ef c9          	vpxor  %xmm1,%xmm1,%xmm1
+   23986:	31 c9                	xor    %ecx,%ecx
+   23988:	48 01 ff             	add    %rdi,%rdi
+   2398b:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+   23990:	c5 fa 7e 00          	vmovq  (%rax),%xmm0
+   23994:	c5 fa 7e 12          	vmovq  (%rdx),%xmm2
+   23998:	83 c1 01             	add    $0x1,%ecx
+   2399b:	48 01 f8             	add    %rdi,%rax
+   2399e:	48 01 f2             	add    %rsi,%rdx
+   239a1:	c5 f9 f9 c2          	vpsubw %xmm2,%xmm0,%xmm0
+   239a5:	c5 f9 f5 c0          	vpmaddwd %xmm0,%xmm0,%xmm0
+   239a9:	c5 f9 fe c1          	vpaddd %xmm1,%xmm0,%xmm0
+   239ad:	c5 f9 6f c8          	vmovdqa %xmm0,%xmm1
+   239b1:	41 39 c8             	cmp    %ecx,%r8d
+   239b4:	75 da                	jne    23990 <_ZN5vvenc6RdCost16xGetSSE_NxN_SIMDILi4ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x30>
+   239b6:	c4 e2 79 02 c0       	vphaddd %xmm0,%xmm0,%xmm0
+   239bb:	c5 f9 7e c0          	vmovd  %xmm0,%eax
+   239bf:	48 98                	cltq
+   239c1:	c3                   	ret
+   239c2:	66 0f 1f 44 00 00    	nopw   0x0(%rax,%rax,1)
+   239c8:	c5 f9 ef c0          	vpxor  %xmm0,%xmm0,%xmm0
+   239cc:	c4 e2 79 02 c0       	vphaddd %xmm0,%xmm0,%xmm0
+   239d1:	c5 f9 7e c0          	vmovd  %xmm0,%eax
+   239d5:	48 98                	cltq
+   239d7:	c3                   	ret
+   239d8:	0f 1f 84 00 00 00 00 	nopl   0x0(%rax,%rax,1)
+   239df:	00 
+
+00000000000239e0 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi8ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE>:
+   239e0:	f3 0f 1e fa          	endbr64
+   239e4:	8b 4f 44             	mov    0x44(%rdi),%ecx
+   239e7:	44 8b 4f 10          	mov    0x10(%rdi),%r9d
+   239eb:	44 8b 47 28          	mov    0x28(%rdi),%r8d
+   239ef:	44 8b 57 04          	mov    0x4(%rdi),%r10d
+   239f3:	48 8b 47 08          	mov    0x8(%rdi),%rax
+   239f7:	48 8b 57 20          	mov    0x20(%rdi),%rdx
+   239fb:	41 d3 e1             	shl    %cl,%r9d
+   239fe:	41 d3 e0             	shl    %cl,%r8d
+   23a01:	41 83 fa 10          	cmp    $0x10,%r10d
+   23a05:	0f 85 95 00 00 00    	jne    23aa0 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi8ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0xc0>
+   23a0b:	83 f9 01             	cmp    $0x1,%ecx
+   23a0e:	0f 85 8c 00 00 00    	jne    23aa0 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi8ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0xc0>
+   23a14:	83 7f 40 0a          	cmpl   $0xa,0x40(%rdi)
+   23a18:	0f 8e 92 00 00 00    	jle    23ab0 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi8ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0xd0>
+   23a1e:	bf 01 00 00 00       	mov    $0x1,%edi
+   23a23:	41 bb 01 00 00 00    	mov    $0x1,%r11d
+   23a29:	4d 63 c9             	movslq %r9d,%r9
+   23a2c:	31 f6                	xor    %esi,%esi
+   23a2e:	4d 63 c0             	movslq %r8d,%r8
+   23a31:	c5 f9 6e cf          	vmovd  %edi,%xmm1
+   23a35:	41 d3 e3             	shl    %cl,%r11d
+   23a38:	4d 01 c9             	add    %r9,%r9
+   23a3b:	4d 01 c0             	add    %r8,%r8
+   23a3e:	c5 e9 ef d2          	vpxor  %xmm2,%xmm2,%xmm2
+   23a42:	c4 e2 79 79 c9       	vpbroadcastw %xmm1,%xmm1
+   23a47:	66 0f 1f 84 00 00 00 	nopw   0x0(%rax,%rax,1)
+   23a4e:	00 00 
+   23a50:	c5 fa 6f 30          	vmovdqu (%rax),%xmm6
+   23a54:	c5 c9 f9 02          	vpsubw (%rdx),%xmm6,%xmm0
+   23a58:	44 01 de             	add    %r11d,%esi
+   23a5b:	4c 01 c8             	add    %r9,%rax
+   23a5e:	4c 01 c2             	add    %r8,%rdx
+   23a61:	c4 e2 79 1d c0       	vpabsw %xmm0,%xmm0
+   23a66:	c5 f9 f5 c1          	vpmaddwd %xmm1,%xmm0,%xmm0
+   23a6a:	c5 f9 fe c2          	vpaddd %xmm2,%xmm0,%xmm0
+   23a6e:	c5 f9 6f d0          	vmovdqa %xmm0,%xmm2
+   23a72:	41 39 f2             	cmp    %esi,%r10d
+   23a75:	7f d9                	jg     23a50 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi8ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x70>
+   23a77:	b8 01 00 01 00       	mov    $0x10001,%eax
+   23a7c:	c5 f9 6e c8          	vmovd  %eax,%xmm1
+   23a80:	c5 f9 70 c9 00       	vpshufd $0x0,%xmm1,%xmm1
+   23a85:	c4 e2 79 02 c1       	vphaddd %xmm1,%xmm0,%xmm0
+   23a8a:	c4 e2 79 02 c1       	vphaddd %xmm1,%xmm0,%xmm0
+   23a8f:	c5 f9 7e c0          	vmovd  %xmm0,%eax
+   23a93:	d3 e0                	shl    %cl,%eax
+   23a95:	c3                   	ret
+   23a96:	66 2e 0f 1f 84 00 00 	cs nopw 0x0(%rax,%rax,1)
+   23a9d:	00 00 00 
+   23aa0:	c5 f9 ef c0          	vpxor  %xmm0,%xmm0,%xmm0
+   23aa4:	45 85 d2             	test   %r10d,%r10d
+   23aa7:	0f 8f 71 ff ff ff    	jg     23a1e <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi8ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x3e>
+   23aad:	eb c8                	jmp    23a77 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi8ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x97>
+   23aaf:	90                   	nop
+   23ab0:	4d 63 c9             	movslq %r9d,%r9
+   23ab3:	4d 63 c0             	movslq %r8d,%r8
+   23ab6:	c5 fa 6f 38          	vmovdqu (%rax),%xmm7
+   23aba:	c5 c1 f9 12          	vpsubw (%rdx),%xmm7,%xmm2
+   23abe:	4b 8d 34 09          	lea    (%r9,%r9,1),%rsi
+   23ac2:	4b 8d 0c 00          	lea    (%r8,%r8,1),%rcx
+   23ac6:	48 8d 3c 30          	lea    (%rax,%rsi,1),%rdi
+   23aca:	48 8d 04 0a          	lea    (%rdx,%rcx,1),%rax
+   23ace:	c4 e2 79 1d d2       	vpabsw %xmm2,%xmm2
+   23ad3:	c5 fa 6f 3f          	vmovdqu (%rdi),%xmm7
+   23ad7:	48 8d 14 37          	lea    (%rdi,%rsi,1),%rdx
+   23adb:	c5 c1 f9 08          	vpsubw (%rax),%xmm7,%xmm1
+   23adf:	48 01 c8             	add    %rcx,%rax
+   23ae2:	c5 fa 6f 2a          	vmovdqu (%rdx),%xmm5
+   23ae6:	48 01 f2             	add    %rsi,%rdx
+   23ae9:	c5 d1 f9 18          	vpsubw (%rax),%xmm5,%xmm3
+   23aed:	48 01 c8             	add    %rcx,%rax
+   23af0:	c5 fa 6f 3a          	vmovdqu (%rdx),%xmm7
+   23af4:	c5 c1 f9 00          	vpsubw (%rax),%xmm7,%xmm0
+   23af8:	bf 01 00 00 00       	mov    $0x1,%edi
+   23afd:	48 01 f2             	add    %rsi,%rdx
+   23b00:	c4 e2 79 1d db       	vpabsw %xmm3,%xmm3
+   23b05:	c4 e2 79 1d c9       	vpabsw %xmm1,%xmm1
+   23b0a:	48 01 c8             	add    %rcx,%rax
+   23b0d:	c5 fa 6f 22          	vmovdqu (%rdx),%xmm4
+   23b11:	c4 e2 79 1d c0       	vpabsw %xmm0,%xmm0
+   23b16:	c5 f1 fd ca          	vpaddw %xmm2,%xmm1,%xmm1
+   23b1a:	48 01 f2             	add    %rsi,%rdx
+   23b1d:	c5 f9 fd c3          	vpaddw %xmm3,%xmm0,%xmm0
+   23b21:	c5 f9 6e df          	vmovd  %edi,%xmm3
+   23b25:	c5 fa 6f 2a          	vmovdqu (%rdx),%xmm5
+   23b29:	48 01 f2             	add    %rsi,%rdx
+   23b2c:	c4 e2 79 79 db       	vpbroadcastw %xmm3,%xmm3
+   23b31:	c5 f9 fd c1          	vpaddw %xmm1,%xmm0,%xmm0
+   23b35:	c5 fa 6f 3a          	vmovdqu (%rdx),%xmm7
+   23b39:	c5 f9 f5 cb          	vpmaddwd %xmm3,%xmm0,%xmm1
+   23b3d:	c5 d9 f9 00          	vpsubw (%rax),%xmm4,%xmm0
+   23b41:	48 01 c8             	add    %rcx,%rax
+   23b44:	c4 a1 7a 6f 24 4a    	vmovdqu (%rdx,%r9,2),%xmm4
+   23b4a:	c5 d1 f9 28          	vpsubw (%rax),%xmm5,%xmm5
+   23b4e:	48 01 c8             	add    %rcx,%rax
+   23b51:	c5 c1 f9 10          	vpsubw (%rax),%xmm7,%xmm2
+   23b55:	c4 a1 59 f9 24 40    	vpsubw (%rax,%r8,2),%xmm4,%xmm4
+   23b5b:	c4 e2 79 1d c0       	vpabsw %xmm0,%xmm0
+   23b60:	b8 01 00 01 00       	mov    $0x10001,%eax
+   23b65:	c4 e2 79 1d ed       	vpabsw %xmm5,%xmm5
+   23b6a:	c4 e2 79 1d e4       	vpabsw %xmm4,%xmm4
+   23b6f:	c4 e2 79 1d d2       	vpabsw %xmm2,%xmm2
+   23b74:	c5 f9 fd c5          	vpaddw %xmm5,%xmm0,%xmm0
+   23b78:	c5 e9 fd d4          	vpaddw %xmm4,%xmm2,%xmm2
+   23b7c:	c5 f9 fd c2          	vpaddw %xmm2,%xmm0,%xmm0
+   23b80:	c5 f9 f5 c3          	vpmaddwd %xmm3,%xmm0,%xmm0
+   23b84:	c5 f9 fe c1          	vpaddd %xmm1,%xmm0,%xmm0
+   23b88:	c5 f9 6e c8          	vmovd  %eax,%xmm1
+   23b8c:	c5 f9 70 c9 00       	vpshufd $0x0,%xmm1,%xmm1
+   23b91:	c4 e2 79 02 c1       	vphaddd %xmm1,%xmm0,%xmm0
+   23b96:	c4 e2 79 02 c1       	vphaddd %xmm1,%xmm0,%xmm0
+   23b9b:	c5 f9 7e c0          	vmovd  %xmm0,%eax
+   23b9f:	01 c0                	add    %eax,%eax
+   23ba1:	89 c0                	mov    %eax,%eax
+   23ba3:	c3                   	ret
+   23ba4:	66 2e 0f 1f 84 00 00 	cs nopw 0x0(%rax,%rax,1)
+   23bab:	00 00 00 
+   23bae:	66 90                	xchg   %ax,%ax
+
+0000000000023bb0 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi32ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE>:
+   23bb0:	f3 0f 1e fa          	endbr64
+   23bb4:	8b 4f 44             	mov    0x44(%rdi),%ecx
+   23bb7:	44 8b 4f 10          	mov    0x10(%rdi),%r9d
+   23bbb:	41 ba 01 00 00 00    	mov    $0x1,%r10d
+   23bc1:	44 8b 47 28          	mov    0x28(%rdi),%r8d
+   23bc5:	44 8b 5f 04          	mov    0x4(%rdi),%r11d
+   23bc9:	48 8b 57 08          	mov    0x8(%rdi),%rdx
+   23bcd:	48 8b 47 20          	mov    0x20(%rdi),%rax
+   23bd1:	41 d3 e2             	shl    %cl,%r10d
+   23bd4:	41 d3 e1             	shl    %cl,%r9d
+   23bd7:	41 d3 e0             	shl    %cl,%r8d
+   23bda:	45 85 db             	test   %r11d,%r11d
+   23bdd:	7e 79                	jle    23c58 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi32ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0xa8>
+   23bdf:	bf 01 00 00 00       	mov    $0x1,%edi
+   23be4:	4d 63 c9             	movslq %r9d,%r9
+   23be7:	4d 63 c0             	movslq %r8d,%r8
+   23bea:	31 f6                	xor    %esi,%esi
+   23bec:	c5 f9 6e df          	vmovd  %edi,%xmm3
+   23bf0:	4d 01 c9             	add    %r9,%r9
+   23bf3:	c5 e9 ef d2          	vpxor  %xmm2,%xmm2,%xmm2
+   23bf7:	4d 01 c0             	add    %r8,%r8
+   23bfa:	c4 e2 7d 79 db       	vpbroadcastw %xmm3,%ymm3
+   23bff:	90                   	nop
+   23c00:	c5 fe 6f 22          	vmovdqu (%rdx),%ymm4
+   23c04:	c5 fe 6f 6a 20       	vmovdqu 0x20(%rdx),%ymm5
+   23c09:	44 01 d6             	add    %r10d,%esi
+   23c0c:	4c 01 ca             	add    %r9,%rdx
+   23c0f:	c5 dd f9 00          	vpsubw (%rax),%ymm4,%ymm0
+   23c13:	c5 d5 f9 48 20       	vpsubw 0x20(%rax),%ymm5,%ymm1
+   23c18:	4c 01 c0             	add    %r8,%rax
+   23c1b:	c4 e2 7d 1d c0       	vpabsw %ymm0,%ymm0
+   23c20:	c4 e2 7d 1d c9       	vpabsw %ymm1,%ymm1
+   23c25:	c5 fd fd c1          	vpaddw %ymm1,%ymm0,%ymm0
+   23c29:	c5 fd f5 c3          	vpmaddwd %ymm3,%ymm0,%ymm0
+   23c2d:	c5 fd fe c2          	vpaddd %ymm2,%ymm0,%ymm0
+   23c31:	c5 fd 6f d0          	vmovdqa %ymm0,%ymm2
+   23c35:	44 39 de             	cmp    %r11d,%esi
+   23c38:	7c c6                	jl     23c00 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi32ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x50>
+   23c3a:	c4 e3 7d 39 d2 01    	vextracti128 $0x1,%ymm2,%xmm2
+   23c40:	c5 f9 fe c2          	vpaddd %xmm2,%xmm0,%xmm0
+   23c44:	c4 e2 79 02 c0       	vphaddd %xmm0,%xmm0,%xmm0
+   23c49:	c4 e2 79 02 c0       	vphaddd %xmm0,%xmm0,%xmm0
+   23c4e:	c5 f9 7e c0          	vmovd  %xmm0,%eax
+   23c52:	d3 e0                	shl    %cl,%eax
+   23c54:	c5 f8 77             	vzeroupper
+   23c57:	c3                   	ret
+   23c58:	c5 f9 ef c0          	vpxor  %xmm0,%xmm0,%xmm0
+   23c5c:	c5 e9 ef d2          	vpxor  %xmm2,%xmm2,%xmm2
+   23c60:	eb d8                	jmp    23c3a <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi32ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x8a>
+   23c62:	66 2e 0f 1f 84 00 00 	cs nopw 0x0(%rax,%rax,1)
+   23c69:	00 00 00 
+   23c6c:	0f 1f 40 00          	nopl   0x0(%rax)
+
+0000000000023c70 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi64ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE>:
+   23c70:	f3 0f 1e fa          	endbr64
+   23c74:	55                   	push   %rbp
+   23c75:	41 bb 01 00 00 00    	mov    $0x1,%r11d
+   23c7b:	48 89 e5             	mov    %rsp,%rbp
+   23c7e:	41 54                	push   %r12
+   23c80:	53                   	push   %rbx
+   23c81:	8b 4f 44             	mov    0x44(%rdi),%ecx
+   23c84:	44 8b 4f 10          	mov    0x10(%rdi),%r9d
+   23c88:	44 8b 47 28          	mov    0x28(%rdi),%r8d
+   23c8c:	8b 5f 04             	mov    0x4(%rdi),%ebx
+   23c8f:	48 8b 57 08          	mov    0x8(%rdi),%rdx
+   23c93:	41 d3 e3             	shl    %cl,%r11d
+   23c96:	48 8b 77 20          	mov    0x20(%rdi),%rsi
+   23c9a:	41 d3 e1             	shl    %cl,%r9d
+   23c9d:	41 d3 e0             	shl    %cl,%r8d
+   23ca0:	85 db                	test   %ebx,%ebx
+   23ca2:	0f 8e e6 00 00 00    	jle    23d8e <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi64ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x11e>
+   23ca8:	41 bc 01 00 00 00    	mov    $0x1,%r12d
+   23cae:	4d 63 c9             	movslq %r9d,%r9
+   23cb1:	4d 63 c0             	movslq %r8d,%r8
+   23cb4:	49 89 fa             	mov    %rdi,%r10
+   23cb7:	c4 c1 79 6e e4       	vmovd  %r12d,%xmm4
+   23cbc:	4d 01 c9             	add    %r9,%r9
+   23cbf:	4d 01 c0             	add    %r8,%r8
+   23cc2:	31 ff                	xor    %edi,%edi
+   23cc4:	c5 e1 ef db          	vpxor  %xmm3,%xmm3,%xmm3
+   23cc8:	b8 03 00 00 00       	mov    $0x3,%eax
+   23ccd:	c4 e2 7d 79 e4       	vpbroadcastw %xmm4,%ymm4
+   23cd2:	eb 2d                	jmp    23d01 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi64ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x91>
+   23cd4:	0f 1f 40 00          	nopl   0x0(%rax)
+   23cd8:	c4 e3 7d 39 c1 01    	vextracti128 $0x1,%ymm0,%xmm1
+   23cde:	c5 f1 fe c8          	vpaddd %xmm0,%xmm1,%xmm1
+   23ce2:	c5 f9 7e c8          	vmovd  %xmm1,%eax
+   23ce6:	48 98                	cltq
+   23ce8:	48 d3 e0             	shl    %cl,%rax
+   23ceb:	49 39 42 50          	cmp    %rax,0x50(%r10)
+   23cef:	0f 82 91 00 00 00    	jb     23d86 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi64ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x116>
+   23cf5:	44 01 df             	add    %r11d,%edi
+   23cf8:	b8 03 00 00 00       	mov    $0x3,%eax
+   23cfd:	39 df                	cmp    %ebx,%edi
+   23cff:	7d 6b                	jge    23d6c <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi64ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0xfc>
+   23d01:	c5 fe 6f 32          	vmovdqu (%rdx),%ymm6
+   23d05:	c5 fe 6f 7a 20       	vmovdqu 0x20(%rdx),%ymm7
+   23d0a:	c5 cd f9 06          	vpsubw (%rsi),%ymm6,%ymm0
+   23d0e:	c5 c5 f9 6e 20       	vpsubw 0x20(%rsi),%ymm7,%ymm5
+   23d13:	c5 fe 6f 72 40       	vmovdqu 0x40(%rdx),%ymm6
+   23d18:	c5 fe 6f 7a 60       	vmovdqu 0x60(%rdx),%ymm7
+   23d1d:	4c 01 ca             	add    %r9,%rdx
+   23d20:	c5 cd f9 4e 40       	vpsubw 0x40(%rsi),%ymm6,%ymm1
+   23d25:	c5 c5 f9 56 60       	vpsubw 0x60(%rsi),%ymm7,%ymm2
+   23d2a:	c4 e2 7d 1d c0       	vpabsw %ymm0,%ymm0
+   23d2f:	4c 01 c6             	add    %r8,%rsi
+   23d32:	c4 e2 7d 1d ed       	vpabsw %ymm5,%ymm5
+   23d37:	c4 e2 7d 1d c9       	vpabsw %ymm1,%ymm1
+   23d3c:	c4 e2 7d 1d d2       	vpabsw %ymm2,%ymm2
+   23d41:	c5 fd fd c5          	vpaddw %ymm5,%ymm0,%ymm0
+   23d45:	c5 f5 fd ca          	vpaddw %ymm2,%ymm1,%ymm1
+   23d49:	c5 fd fd c1          	vpaddw %ymm1,%ymm0,%ymm0
+   23d4d:	c5 fd f5 c4          	vpmaddwd %ymm4,%ymm0,%ymm0
+   23d51:	c4 e2 65 02 c0       	vphaddd %ymm0,%ymm3,%ymm0
+   23d56:	c5 fd 6f d8          	vmovdqa %ymm0,%ymm3
+   23d5a:	85 c0                	test   %eax,%eax
+   23d5c:	0f 84 76 ff ff ff    	je     23cd8 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi64ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x68>
+   23d62:	44 01 df             	add    %r11d,%edi
+   23d65:	83 e8 01             	sub    $0x1,%eax
+   23d68:	39 df                	cmp    %ebx,%edi
+   23d6a:	7c 95                	jl     23d01 <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi64ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0x91>
+   23d6c:	c4 e3 7d 39 db 01    	vextracti128 $0x1,%ymm3,%xmm3
+   23d72:	c5 f9 fe c3          	vpaddd %xmm3,%xmm0,%xmm0
+   23d76:	c4 e2 79 02 c0       	vphaddd %xmm0,%xmm0,%xmm0
+   23d7b:	c4 e2 79 02 c0       	vphaddd %xmm0,%xmm0,%xmm0
+   23d80:	c5 f9 7e c0          	vmovd  %xmm0,%eax
+   23d84:	d3 e0                	shl    %cl,%eax
+   23d86:	c5 f8 77             	vzeroupper
+   23d89:	5b                   	pop    %rbx
+   23d8a:	41 5c                	pop    %r12
+   23d8c:	5d                   	pop    %rbp
+   23d8d:	c3                   	ret
+   23d8e:	c5 f9 ef c0          	vpxor  %xmm0,%xmm0,%xmm0
+   23d92:	c5 e1 ef db          	vpxor  %xmm3,%xmm3,%xmm3
+   23d96:	eb d4                	jmp    23d6c <_ZN5vvenc6RdCost16xGetSAD_NxN_SIMDILi64ELNS_8x86_simd8X86_VEXTE4EEEmRKNS_9DistParamE+0xfc>
+   23d98:	0f 1f 84 00 00 00 00 	nopl   0x0(%rax,%rax,1)
+   23d9f:	00 

@@ -1,0 +1,24 @@
+C++ SIMD (AVX2) SAD Microbenchmark Baseline
+Binary: perf/microbenchmarks/sad/sad_microbench
+Date: 2026-05-12
+CPU: taskset -c 0 (P-core only)
+Flags: -O3 -DNDEBUG -DUSE_AVX2 -mavx2 -fno-inline (via template instantiation)
+Calls: 2000000
+
+Results:
+  SAD8x8/16:    26.309 ms  76.020 M iter/s  13.155 ns/call
+  SAD16x16:     28.400 ms  70.423 M iter/s  14.200 ns/call
+  SAD32x32:     65.227 ms  30.662 M iter/s  32.614 ns/call
+  SAD64x64:    235.605 ms   8.489 M iter/s 117.802 ns/call
+
+Perf counters (aggregate, all sizes):
+  Instructions (cpu_core):  4,342,611,438
+  Cycles (cpu_core):        1,339,430,788
+  IPC:                       3.24
+  Branch mispredict rate:    0.40%
+  L1-dcache miss rate:       0.02%
+  LLC loads:                 12,246
+  Backend bound:             35.8%
+  Frontend bound:             3.0%
+  Retiring:                  60.0%
+  Bad speculation:            1.2%
