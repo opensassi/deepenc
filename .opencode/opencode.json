@@ -8,7 +8,8 @@
     "git": "allow",
     "profiler": "allow",
     "issue": "allow",
-    "asm-optimizer": "allow"
+    "asm-optimizer": "allow",
+    "dq-asm-minselect-debug-3": "allow"
   },
   "mcp": {
     "playwright": {

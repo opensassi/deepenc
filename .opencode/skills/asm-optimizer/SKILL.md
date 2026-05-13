@@ -26,6 +26,9 @@ Senior performance engineer with deep expertise in x86 assembly optimization, mi
 - `external/x265/source/common/x86/*.spec.md` — x265 ASM reference implementations
 - `perf/baseline/` — baseline build and profiles (generated, gitignored)
 - `scripts/asm-optimizer/` — support scripts
+- `scripts/extract-artifacts.js` — artifact extraction for technical specifications
+- `scripts/test-artifacts.js` — artifact validation (mermaid→PNG, D3 filmstrip)
+- `scripts/verify-animation.js` — D3 animation keyframe verification
 
 ## Commands
 
@@ -83,29 +86,119 @@ Create an isolated microbenchmark for one dispatch table function. Writes a stan
 - Records cycle count, IPC, cache misses
 - Saves baseline to `.profiler/asm-optimizer/baselines/<entry>`
 
+### `spec <entry>`
+
+Generate a technical specification of the C++ reference implementation using the system-design approach:
+
+1. **Disassemble the C++ SIMD function**: Use `objdump -d` on the compiled binary to extract the C++ compiler's output. Save as `source/Lib/CommonLib/x86/<entry>-cpp-spec.spec.md`.
+
+2. **Count instructions**: Use `grep -c "^    [0-9a-f]"` on the disassembly to get the full instruction count. Break down by functional blocks.
+
+3. **Build a pipeline model**: Identify key µarch features:
+   - Frontend (decode width = 4-wide)
+   - Execution ports (P0-P6 for Sunny Cove)
+   - Memory hierarchy (L1D 48KB, LDQ 12 entries)
+   - Cache working set analysis
+
+4. **Create a technical specification** with:
+   - Architecture diagram (Mermaid C4 graph of pipeline components)
+   - Sequence diagram (instruction flow through pipeline stages)
+   - D3 animation for cycle-level visualization
+   - Bottleneck analysis table
+   - Instruction-to-uop decomposition table
+
+5. **Use the artifact pipeline** to validate extracted diagrams:
+   ```
+   node scripts/extract-artifacts.js --file <spec-path>
+   node scripts/test-artifacts.js --file <spec-path>
+   ```
+
+6. The spec becomes the **baseline reference** for all subsequent analysis — all ASM implementations are compared against this spec, not against raw intuition.
+
+### `analyze-gap <entry>`
+
+Compare the ASM implementation against the C++ spec baseline:
+
+1. **Disassemble both**:
+   ```
+   objdump -d <microbench> | awk '/<vvenc_...>/,/^$/' | grep -c "^    [0-9a-f]"
+   objdump -d <microbench> | awk '/<DQInternSimd.*>/,/^$/' | grep -c "^    [0-9a-f]"
+   ```
+
+2. **Compare instruction count per functional block**: rdCost setup, sigBits, cffBits, spt dispatch, min-select, store/epilogue.
+
+3. **Identify structural differences**:
+   - Is the compiler using LEA chains instead of IMUL? (e.g., `ctx*3` then `*8` = ×24)
+   - Are memory-folded vpinsrd/vpinsrq used instead of separate `mov`+`vpinsrd`?
+   - Is register scheduling different (pop interleaved with vector compute)?
+   - Are address computations precomputed or re-computed per load?
+
+4. **Rate each gap** on potential impact:
+   - **Critical**: 5+ uops saved, 3+ cycles
+   - **High**: 3-5 uops saved, 1-3 cycles
+   - **Medium**: 1-3 uops saved, <1 cycle
+   - **Low**: cosmetic only
+
+5. **Output** a structured gap analysis: for each gap, the C++ approach, our ASM approach, the estimated uop/cycle difference, and a fix recommendation.
+
 ### `bench <entry>`
 
-Run the microbenchmark and compare against the stored baseline. Reports absolute and relative Δ.
+Run the microbenchmark and compare against the C++ SIMD baseline:
+
+1. Build the microbenchmark with `-fno-inline` to prevent the C++ function from being inlined into the benchmark loop.
+2. Call both functions through **volatile function pointers** to force indirect calls (no inlining advantage).
+3. Record:
+   - C++ SIMD ref time
+   - ASM time
+   - Speedup ratio (ASM / C++ = 1.0 means equal)
+4. Report whether the result is above the significance threshold (see Benchmark Environment notes).
 
 ### `implement <entry> [--ref x265-asm-path]`
 
-Generate a NASM assembly implementation for one dispatch table entry:
-1. Read the current C++ intrinsic implementation from the `.cpp` files
-2. If `--ref` provided, read the x265 ASM reference (e.g., `external/x265/source/common/x86/ipfilter8.asm`) and adapt the algorithm
-3. Write a `.asm` file to `source/Lib/CommonLib/x86/`
-4. Register the function pointer in `asm-primitives.cpp` via `setupAssemblyPrimitives()`
-5. Run bit-exact validation against the C++ intrinsic
-6. Run microbenchmark
-7. Report speedup/regression
+Generate an implementation for one dispatch table entry, following the spec-first process:
 
-### `iterative-optimize <entry> [--iter 3]`
+1. **Generate spec first**: If no spec exists for this entry (from `spec <entry>`), tell the user to run `spec <entry>` first and abort.
+2. **Analyze the gap**: If no gap analysis exists, run `analyze-gap <entry>` to identify which structural improvements to target.
+3. **Propose a hypothesis**: For each identified gap, propose a specific ASM change. Create a mini-spec for the hypothesis explaining what it changes and why.
+4. **Write the ASM**: Either write a new `.asm` file or embed GAS inline asm in a `.cpp` file.
+5. **Register**: Add the function pointer in `asm-primitives.cpp`.
+6. **Validate**: Run bit-exact test (all 16+ test patterns must pass).
+7. **Benchmark**: Run `bench <entry>` against the C++ SIMD baseline.
+8. **Evaluate**: If the improvement is above the significance threshold, accept. If below, archive as experiment.
 
-Full optimization loop:
-1. `bench` — establish baseline
-2. `implement` — write ASM, register, validate
-3. `bench` — compare against baseline
-4. If speedup < target: refine and go to step 2
-5. Report final speedup and iteration history
+### `iterative-optimize <entry> [--iter N]`
+
+Full optimization pipeline with experiment archiving:
+
+1. `setup-microbench <entry>` — create/update harness
+2. `spec <entry>` — generate C++ technical specification
+3. For each hypothesis (up to N iterations):
+   a. `analyze-gap <entry>` — compare to C++ baseline
+   b. `implement <entry>` — try one improvement
+   c. `bench <entry>` — measure against C++ SIMD
+   d. If speedup >= threshold: accept, commit, continue
+   e. If speedup < threshold: archive experiment
+
+4. **If after N iterations no hypothesis achieves significant improvement**:
+   - Run `archive-experiment <entry>` with the final results
+   - Only the experiment files are committed (not the code changes)
+   - Working tree changes remain uncommitted for other agents
+
+5. Report final outcome: which improvements succeeded, which were archived, and the per-hypothesis benchmark table.
+
+### `archive-experiment <entry>`
+
+Save a complete experiment record when a hypothesis does not yield significant improvement:
+
+1. Create `perf/experiments/<entry>_<date>/` with:
+   - `src/` — microbenchmark, ASM source, build script
+   - `specs/` — technical specifications generated during analysis
+   - `results/` — benchmark data, perf stat output, comparison tables
+   - `README.md` — session summary, hypothesis tried, benchmark results, conclusions
+
+2. Stage only the experiment directory: `git add perf/experiments/<entry>_<date>/`
+3. Do NOT revert other working tree changes.
+4. Report the experiment path and a summary.
 
 ### `report [--format markdown|json]`
 
@@ -123,11 +216,39 @@ Each dispatch table entry is scored against these factors:
 | Branch mispredict rate | `perf stat branch-misses / branches` | > 2% = high potential |
 | Frontend bound % | `perf stat --topdown` | > 15% = can improve |
 | Composable pipeline | Manual analysis of data flow | Multiple ops fuse-able? |
+| Compiler gap | Instruction count diff from C++ baseline | > 20% more instr = high potential |
 | x265 ASM reference | x265 spec.md tree | Direct port possible? |
 | Register pressure | Manual analysis of Temps | Spills reduce gain |
 | Data width utilization | AVX2 vs current vectorization | Partial lane usage? |
 
 Score → **Low / Medium / High / Critical**
+
+### Benchmark Environment
+
+| Factor | Workstation | Laptop |
+|--------|------------|--------|
+| Turbo boost | Disable for reproducibility | Keep enabled (no control) |
+| Significance threshold | ~5% speedup | ~15-20% speedup |
+| Runs per measurement | 3-5 | 5-10 |
+| Suggested approach | microbench + full encoder | microbench-only (encoder noise too high) |
+
+On a laptop, **microbenchmark-only measurements** are recommended. Full encoder
+wall-clock comparisons are high-noise and should not be used to determine significance.
+The significance threshold should account for:
+- CPU frequency scaling (turbo boost, thermal throttling)
+- Background processes (GUI, browser, etc.)
+- Shared memory bandwidth with integrated GPU
+- `taskset -c N` should be used for all measurements
+
+### Experiment Archiving
+
+When an optimization hypothesis does not achieve the significance threshold:
+
+1. The experiment is saved to `perf/experiments/<entry>_<date>/`
+2. All artifacts (ASM source, benchmark data, pipeline specs) are included
+3. The experiment directory is `git add`-ed but NOT committed (session workflow handles commit)
+4. The working tree changes (ASM code, registration changes) are **preserved** — not reverted
+5. This ensures the session's work is archived even when it doesn't produce a winning optimization
 
 ## Baseline Profile Counter Set
 
@@ -155,11 +276,26 @@ mem_load_uops_retired.llc_hit,mem_load_uops_retired.llc_miss
 
 ## Design Principles
 
-- Every change must be benchmarked — never accept an optimization without measured speedup
-- Microbenchmarks isolate the function from the full encode pipeline
-- x265 is reference, not template — adapt algorithms to VVC data structures
-- Baseline captured as single-run result during development; optionally switch to N-run average for production validation
-- Validate bit-exactness — NASM output must match C++ intrinsic output exactly
-- Results persist in `.profiler/asm-optimizer/`
-- NASM naming convention: `vvenc_<operation>_<size>_<isa>.asm`
-- Registration via `setupAssemblyPrimitives()` in `x86/asm-primitives.cpp`
+- **Spec first, then implement** — Every optimization starts by generating a technical specification of the C++ compiler's output. The compiler is the reference, not our intuition. Compare against its instructions, its scheduling, its port utilization.
+
+- **Measure against C++ baseline, not against previous ASM** — The C++ SIMD reference is the true baseline. If our ASM is slower than the compiler's output, we need to understand why. If it's equal or faster, we've succeeded. Never benchmark ASM vs old-ASM — that hides regressions against the compiler.
+
+- **Every hypothesis is an experiment** — Before writing ASM, write a mini-spec for the hypothesis: what structural change is proposed, why it should be faster, which µarch bottleneck it addresses, and the expected instruction/cycle savings.
+
+- **Benchmark with `-fno-inline` and volatile function pointers** — The C++ function is `static` in a header and will be inlined into the benchmark harness unless explicitly prevented. Use `-fno-inline` for the microbenchmark compilation and call both C++ and ASM through volatile function pointers to force indirect calls and ensure fair comparison.
+
+- **Document negative results** — When a hypothesis fails to improve performance, save the experiment to `perf/experiments/`. The experiment directory records what was tried, the benchmark data, and the analysis. Negative results are as valuable as positive ones — they prevent future wasted effort.
+
+- **Significance depends on environment** — On a workstation with turbo disabled: ~5% threshold. On a laptop with uncontrolled turbo/noise: ~15-20% threshold. Always state the threshold and the number of runs used.
+
+- **Microbenchmarks isolate the function from the full encode pipeline** — The compiler's function pointer dispatch hides improvements smaller than ~5% of the function's time. Full encoder wall-clock comparisons are even noisier.
+
+- **Validate bit-exactness** — ASM output must match C++ SIMD output exactly for all test patterns. Bit-exactness is non-negotiable.
+
+- **x265 is reference, not template** — Adapt algorithms to VVC data structures rather than blindly copying x265 patterns.
+
+- **Results persist in `.profiler/asm-optimizer/` and `perf/experiments/`**
+
+- **NASM naming convention**: `vvenc_<operation>_<size>_<isa>.asm`
+
+- **Registration** via `setupAssemblyPrimitives()` in `x86/asm-primitives.cpp`
