@@ -120,7 +120,7 @@ Create a single git commit with all skill changes made during this session.
    The subject line auto-generates from the list of revised skill names. The bullet descriptions come from the audit observations or the user's stated reasons for each revision.
 3. If the user provided a custom message, use that. If they only provided a subject, use it and auto-generate the bullet body. If neither, auto-generate the full message.
 4. `git commit -m "<message>"`
-5. Do NOT push.
+5. Push: `git push`
 
 **Constraints**: Stages only `.opencode/skills/` and `opencode.json`. No tests, no session archive, no push. Independent of the `git` skill's `finish session` workflow.
 
