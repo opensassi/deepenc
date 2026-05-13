@@ -209,3 +209,47 @@ Build with:
 ```bash
 cmake .. -DCMAKE_BUILD_TYPE=Release -DVVENC_ENABLE_ML_LIGHTGBM=ON
 ```
+
+## Available CLI Tools
+
+Installable via:
+- **Ubuntu**: `bash scripts/install/linux/ubuntu-noble-24.04/install.sh`
+- **macOS**: `bash scripts/install/osx/macos-sequoia-15.0/install.sh` (some Linux-specific tools like `perf`/`strace`/`ltrace` are not available)
+- **Windows (WSL2)**: Run `scripts/install/windows/wsl2/install.ps1` as Administrator
+
+These are available for both human and agent use:
+
+| Category | Tool | Purpose |
+|----------|------|---------|
+| **Build** | `g++` / `make` | C++ build toolchain |
+| | `cmake` | Build system |
+| | `nasm` | Assembly compiler (AVX2) |
+| **Artifacts** | `node` / `npm` | Spec artifact pipeline |
+| **Search** | `rg` (ripgrep) | Fast recursive grep |
+| | `fd` | Fast file find |
+| | `bat` | Syntax-highlighted file viewer |
+| | `fzf` | Fuzzy finder |
+| **Monitor** | `htop` | Interactive process viewer |
+| | `duf` | Disk usage (modern df) |
+| **Perf** | `perf` | CPU profiling counters |
+| | `hyperfine` | Statistical benchmarking |
+| **Net** | `httpie` | Human-friendly HTTP client |
+| | `whois` | Domain registration lookup |
+| | `netstat` | Network statistics |
+| | `dig` / `nslookup` | DNS lookup |
+| | `traceroute` | Route tracing |
+| | `nmap` | Port scanning |
+| | `mtr` | Network diagnostics |
+| **Dev** | `gdb` | C++ debugger (CLI) |
+| | `gdb-mcp-server` | C++ debugger (MCP interface) |
+| | `tmux` | Terminal multiplexer |
+| | `parallel` | Run jobs in parallel |
+| | `pv` | Pipe progress viewer |
+| | `entr` | Run command on file change |
+| | `tree` | Directory tree |
+| | `strace` | System call tracer |
+| | `ltrace` | Library call tracer |
+| | `jq` | JSON query |
+| **Misc** | `zip` / `unzip` / `pigz` | Compression |
+| | `rsync` / `curl` / `wget` | Data transfer |
+| | `ssh` | Remote access |

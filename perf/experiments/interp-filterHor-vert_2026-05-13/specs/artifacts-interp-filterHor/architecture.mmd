@@ -1,0 +1,28 @@
+graph TB
+    subgraph Frontend["Frontend (4-wide)"]
+        L1I[L1I 32KB] --> IDQ[IDQ 20 entries]
+        IDQ --> DEC[Decode: 4-wide]
+    end
+    
+    subgraph RS_ROB["Out-of-Order Engine"]
+        DEC --> ROB[ROB 224 entries]
+        DEC --> RS[Reservation Station 97 entries]
+    end
+    
+    subgraph Execution["Execution Ports"]
+        RS --> P0[Port 0: vpmaddwd, vpsrad, vpackssdw]
+        RS --> P1[Port 1: vpaddd, vpshufb]
+        RS --> P2_P3[Port 2/3: Load AGU]
+        RS --> P4[Port 4: Store AGU]
+        RS --> P5[Port 5: vpshufb, shuffle]
+        RS --> P6[Port 6: Loop branch]
+    end
+    
+    subgraph Memory["Memory Hierarchy"]
+        P2_P3 --> L1D[L1D 48KB]
+        L1D --> L2[L2 512KB]
+        L2 --> LLC[LLC]
+        L1I --> L2
+        P4 --> StoreBuf[Store Buffer 28 entries]
+        StoreBuf --> L1D
+    end

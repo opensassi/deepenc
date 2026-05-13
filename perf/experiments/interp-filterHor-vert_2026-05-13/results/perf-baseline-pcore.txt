@@ -1,0 +1,44 @@
+# started on Tue May 12 19:04:33 2026
+
+
+ Performance counter stats for '.profiler/asm-optimizer/microbenchmarks/dq-checkAllRdCosts/dq_microbench':
+
+           738,792      task-clock:u                     #  431.034 CPUs utilized             
+                 0      context-switches:u               #    0.000 /sec                      
+                 0      cpu-migrations:u                 #    0.000 /sec                      
+               126      page-faults:u                    #  170.549 K/sec                     
+     <not counted>      cpu_atom/instructions/u                                                 (0.00%)
+         1,890,820      cpu_core/instructions/u          #    1.40  insn per cycle            
+     <not counted>      cpu_atom/cycles/u                                                       (0.00%)
+         1,347,853      cpu_core/cycles/u                #    1.824 GHz                       
+     <not counted>      cpu_atom/branches/u                                                     (0.00%)
+           324,998      cpu_core/branches/u              #  439.905 M/sec                     
+     <not counted>      cpu_atom/branch-misses/u                                                (0.00%)
+             9,701      cpu_core/branch-misses/u         #    2.98% of all branches           
+ #     27.2 %  tma_backend_bound      
+                                                  #     19.7 %  tma_bad_speculation    
+                                                  #     30.5 %  tma_frontend_bound     
+                                                  #     22.6 %  tma_retiring           
+     <not counted>      cpu_atom/L1-dcache-loads/u                                              (0.00%)
+           472,569      cpu_core/L1-dcache-loads/u       #  639.651 M/sec                     
+            12,335      cpu_core/L1-dcache-load-misses/u #    2.61% of all L1-dcache accesses 
+     <not counted>      cpu_atom/LLC-loads/u                                                    (0.00%)
+             1,255      cpu_core/LLC-loads/u             #    1.699 M/sec                     
+     <not counted>      cpu_atom/LLC-load-misses/u                                              (0.00%)
+               904      cpu_core/LLC-load-misses/u       #   72.03% of all LL-cache accesses  
+     <not counted>      cpu_atom/L1-icache-loads/u                                              (0.00%)
+     <not counted>      cpu_atom/L1-icache-load-misses/u                                        (0.00%)
+     <not counted>      cpu_core/L1-icache-load-misses/u                                        (0.00%)
+     <not counted>      cpu_atom/dTLB-loads/u                                                   (0.00%)
+     <not counted>      cpu_core/dTLB-loads/u                                                   (0.00%)
+     <not counted>      cpu_atom/dTLB-load-misses/u                                             (0.00%)
+     <not counted>      cpu_core/dTLB-load-misses/u                                             (0.00%)
+     <not counted>      cpu_atom/iTLB-load-misses/u                                             (0.00%)
+     <not counted>      cpu_core/iTLB-load-misses/u                                             (0.00%)
+
+       0.000001714 seconds time elapsed
+
+       0.000000000 seconds user
+       0.000000000 seconds sys
+
+

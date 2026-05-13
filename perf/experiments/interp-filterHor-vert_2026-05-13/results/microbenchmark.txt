@@ -1,0 +1,7 @@
+BIT-EXACT: YES
+Warming up...
+Benchmarking 100000 iterations...
+C++ SIMD ref: 56.690 ms  (1763979.538 iter/s)
+ASM:          60.616 ms  (1649729.444 iter/s)
+Speedup:      0.935x
+real 0.13 user 0.13 sys 0.00

@@ -44,19 +44,25 @@ if( VVENC_ENABLE_X86_SIMD )
   endif()
 
   # ---- NASM/YASM assembly support (Phase 2) ----
-  # Detects nasm and enables .asm file compilation.
-  # Assembly files live in source/Lib/CommonLib/x86/ alongside C++ SIMD files.
-  # They are compiled with the NASM assembler (not the C++ compiler) and
-  # are added directly to the main library, avoiding C++-specific compile flags.
+  # Compile .asm files with NASM via CMake's built-in ASM_NASM support.
+  # Clear compile flags for .asm files to prevent CXX flags from leaking.
   find_program( VVENC_NASM nasm )
   if( VVENC_NASM )
     enable_language( ASM_NASM )
     file( GLOB ASM_SRC_FILES CONFIGURE_DEPENDS "../CommonLib/x86/*.asm" )
+    # Set per-file properties: NASM files should have no compile flags
+    set_source_files_properties( ${ASM_SRC_FILES} PROPERTIES LANGUAGE ASM_NASM )
+    # Override CMAKE_ASM_NASM_FLAGS to avoid CXX flag contamination
+    set( CMAKE_ASM_NASM_FLAGS_INIT "-f elf64 -Ox" )
+    set( CMAKE_ASM_NASM_COMPILE_OBJECT
+      "<CMAKE_ASM_NASM_COMPILER> ${CMAKE_ASM_NASM_FLAGS_INIT} -o <OBJECT> <SOURCE>" )
     message( STATUS "vvenc: NASM found at ${VVENC_NASM} — assembly support enabled" )
   else()
     set( ASM_SRC_FILES "" )
-    message( STATUS "vvenc: NASM not found — assembly primitives disabled" )
+    message( STATUS "vvenc: NASM not found — NASM assembly primitives disabled" )
   endif()
+
+
 endif()
 
 if( VVENC_ENABLE_ARM_SIMD )
@@ -76,6 +82,8 @@ set( PRIVATE_INC_FILES ${BASE_INC_FILES} ${X86_INC_FILES} ${ARM_INC_FILES} )
 
 # get all source files
 set( SRC_FILES ${BASE_SRC_FILES} ${X86_SRC_FILES} ${ARM_SRC_FILES} )
+# NASM object files are linked via custom commands
+# They appear as EXTERNAL_OBJECTS in the target
 set( INC_FILES ${PRIVATE_INC_FILES} ${PUBLIC_INC_FILES}  )
 
 # NATVIS files for Visual Studio
@@ -97,7 +105,7 @@ include_directories( $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../incl
 include_directories( . .. ../DecoderLib ../EncoderLib ../CommonLib ../CommonLib/x86 ../CommonLib/arm ../MLTools ../apputils )
 include_directories( SYSTEM ../../../thirdparty )
 
-# set common warning flags
+# set common warning flags (applied to all languages, but NASM ignores unknown flags)
 add_compile_options( "$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wall;-Wno-deprecated-register;-Wno-unused-const-variable;-Wno-unknown-attributes>" )
 add_compile_options( "$<$<CXX_COMPILER_ID:GNU>:-Wall;-Wno-unused-function;;-Wno-unused-variable;-Wno-sign-compare;-fdiagnostics-show-option;-Wno-ignored-attributes>" )
 add_compile_options( "$<$<CXX_COMPILER_ID:MSVC>:/W4;/wd4100;/wd4127;/wd4244;/wd4245;/wd4251;/wd4310;/wd4389;/wd4456;/wd4457;/wd4458;/wd4459;/wd4505;/wd4701;/wd4702;/wd4703;/wd4996>" )

@@ -12,7 +12,8 @@
     "dq-asm-minselect-debug-3": "allow",
     "had-avx2-optimization-4": "allow",
     "todo": "allow",
-    "daily-evaluation": "allow"
+    "daily-evaluation": "allow",
+    "interp-vert-8tap-debug-5": "allow"
   },
   "mcp": {
     "playwright": {

@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant L1D as L1D Cache
+    participant P2 as Port 2/3 (Load)
+    participant P0 as Port 0 (pmaddwd)
+    participant P1 as Port 1 (paddd/shuf)
+    participant P4 as Port 4 (Store)
+    
+    Note over L1D,P4: Iteration N (16 Pels)
+    
+    P2->>L1D: vmovdqu [src]
+    P2->>L1D: vmovdqu [src+0x10]
+    P2->>L1D: vmovdqu [src+0x8]
+    Note over P1: vpshufb (3× shuffle)
+    P1->>P1: vpshufb (pair selector)
+    Note over P0: vpmaddwd 6× (5c latency each)
+    P0->>P0: vpmaddwd coef0
+    P0->>P0: vpmaddwd coef1
+    P0->>P0: vpmaddwd coef2
+    P0->>P0: vpmaddwd coef3
+    P0->>P0: vpmaddwd coef4
+    P0->>P0: vpmaddwd coef5
+    Note over P1: vpaddd 8× (accumulate)
+    P1->>P1: vpaddd accumulate
+    P1->>P1: vpaddd add offset
+    Note over P0: vpsrad (shift)
+    Note over P0: vpackssdw
+    P4->>L1D: vmovdqu [dst]

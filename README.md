@@ -9,6 +9,28 @@ deepenc, based on the Fraunhofer Versatile Video Encoder, is a fast and efficien
 - Extensive frame-level and task-based parallelization with very good scaling;
 - Frame-level single-pass and two-pass rate control supporting variable bit-rate (VBR) encoding.
 
+## Prerequisites
+
+The top-level script auto-detects your operating system and runs the correct installer:
+
+```bash
+bash scripts/install.sh
+```
+
+Platform-specific installers are also available directly:
+
+| Platform | Command |
+|----------|---------|
+| Ubuntu 24.04 | `bash scripts/install/linux/ubuntu-noble-24.04/install.sh` |
+| macOS 11+ | `bash scripts/install/osx/macos-sequoia-15.0/install.sh` |
+| Windows (WSL2) | `powershell -ExecutionPolicy Bypass -File scripts\install.ps1` |
+
+The Ubuntu installer provides the full toolchain: build-essential, cmake, nasm, git, nodejs/npm for the artifact pipeline, perf for profiling, gdb/gdb-mcp-server for debugging, and general-purpose CLI tools (ripgrep, fd, bat, htop, jq, httpie, tmux, etc.).
+
+The macOS installer uses Homebrew and Xcode Command Line Tools. Note that `perf`, `strace`, and `ltrace` are Linux-specific; use Xcode Instruments.app for profiling and `lldb` for debugging.
+
+The Windows installer sets up WSL2 with Ubuntu, provisions the repository inside WSL, and runs the Ubuntu install script within the WSL environment. A reboot may be required for the initial WSL feature installation.
+
 ## Information
 
 See the [Wiki-Page](https://github.com/opensassi/deepenc/wiki) for more information:

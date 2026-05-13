@@ -1,0 +1,32 @@
+BIT-EXACT: YES
+Warming up...
+Benchmarking 50000 iterations...
+C++ SIMD ref: 31.928 ms  (1566023.553 iter/s)
+ASM:          40.561 ms  (1232711.225 iter/s)
+Speedup:      0.787x
+
+ Performance counter stats for '/home/pc/projects/deepenc/.profiler/asm-optimizer/microbenchmarks/interp-filterHor/interp_microbench 50000':
+
+       208,486,970      cpu_atom/cycles/u                                                       (26.69%)
+       291,074,709      cpu_core/cycles/u                                                       (73.31%)
+       378,415,476      cpu_atom/instructions/u          #    1.82  insn per cycle              (26.69%)
+     1,052,348,142      cpu_core/instructions/u          #    3.62  insn per cycle              (73.31%)
+        12,704,195      cpu_atom/branches/u                                                     (26.69%)
+        27,359,060      cpu_core/branches/u                                                     (73.31%)
+            42,527      cpu_atom/branch-misses/u         #    0.33% of all branches             (26.69%)
+            98,883      cpu_core/branch-misses/u         #    0.36% of all branches             (73.31%)
+       176,104,304      cpu_atom/L1-dcache-loads/u                                              (26.69%)
+       226,435,035      cpu_core/L1-dcache-loads/u                                              (73.31%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/u                                      
+            26,443      cpu_core/L1-dcache-load-misses/u #    0.01% of all L1-dcache accesses   (73.31%)
+             2,791      cpu_atom/LLC-loads/u                                                    (26.69%)
+             3,695      cpu_core/LLC-loads/u                                                    (73.31%)
+                 0      cpu_atom/LLC-load-misses/u                                              (26.69%)
+             2,864      cpu_core/LLC-load-misses/u       #   77.51% of all LL-cache accesses    (73.31%)
+
+       0.086081443 seconds time elapsed
+
+       0.085048000 seconds user
+       0.001000000 seconds sys
+
+
