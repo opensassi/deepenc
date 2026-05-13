@@ -29,6 +29,7 @@ Senior performance engineer with deep expertise in x86 assembly optimization, mi
 - `scripts/extract-artifacts.js` — artifact extraction for technical specifications
 - `scripts/test-artifacts.js` — artifact validation (mermaid→PNG, D3 filmstrip)
 - `scripts/verify-animation.js` — D3 animation keyframe verification
+- `scripts/install/` — platform install scripts (setup `nasm`, toolchain)
 
 ## Commands
 
@@ -160,8 +161,8 @@ Generate an implementation for one dispatch table entry, following the spec-firs
 1. **Generate spec first**: If no spec exists for this entry (from `spec <entry>`), tell the user to run `spec <entry>` first and abort.
 2. **Analyze the gap**: If no gap analysis exists, run `analyze-gap <entry>` to identify which structural improvements to target.
 3. **Propose a hypothesis**: For each identified gap, propose a specific ASM change. Create a mini-spec for the hypothesis explaining what it changes and why.
-4. **Write the ASM**: Either write a new `.asm` file or embed GAS inline asm in a `.cpp` file.
-5. **Register**: Add the function pointer in `asm-primitives.cpp`.
+4. **Write the ASM**: Write a NASM `.asm` file in `source/Lib/CommonLib/x86/`. Only use GAS inline asm in `.cpp` if NASM is unavailable. **NASM caveat**: All YMM instructions using ymm0–ymm7 require `{vex3}` prefix — without it, NASM silently emits VEX 2-byte (128-bit) encoding, zeroing the upper 128 bits. Verify with `objdump -d` (look for `c4` prefix = 256-bit, `c5` = 128-bit).
+5. **Register**: Add the `extern "C"` declaration in `asm-primitives.h` and the function pointer assignment in `asm-primitives.cpp::setupAssemblyPrimitives()`. NASM `.asm` files in `x86/` are auto-detected by CMake via glob — no manual CMake edits needed.
 6. **Validate**: Run bit-exact test (all 16+ test patterns must pass).
 7. **Benchmark**: Run `bench <entry>` against the C++ SIMD baseline.
 8. **Evaluate**: If the improvement is above the significance threshold, accept. If below, archive as experiment.

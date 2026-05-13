@@ -51,14 +51,18 @@ Complete the current session: create a single atomic commit, rebase onto latest 
    - `git add <resolved-files>`
    - `git rebase --continue`
    - If `git rebase --continue` opens an editor, save and exit immediately (the commit message from step 5 is preserved)
-8. **Run tests**: `npx @opensassi/deepenc-harness build --test`
+8. **Run tests**: `npx @opensassi/deepenc-harness build --test`. If that command is unavailable, run `ctest --test-dir build/release-shared --output-on-failure` directly.
 9. **If tests fail**:
-   - Fix the failing test(s) or code
+   - First determine if the failure is pre-existing (not caused by your session's changes). Verify by running the same test on a clean `main` checkout. If it fails there too, document it and proceed — do not loop fix-attempts on pre-existing failures.
+   - If the failure is caused by your changes: fix the failing test(s) or code
    - `git add -A`
    - `git commit --amend --no-edit` (preserves the commit message)
    - Go back to step 6 (re-rebase onto latest main)
 10. **Write evaluation sidecar**: Write the evaluation summary (produced by step 2's `generate` output) to `sessions/<title-slug>-<session-id-noprefix>.md` using the `write` tool.
-11. **Export session archive**: Run `bash sessions/export-session.sh <title-slug> ses_<session-id-noprefix>`. This creates `sessions/<title-slug>-<session-id-noprefix>.json.bz2` (compressed session JSON) and `.sha256` (content hash).
+11. **Export session archive**: Load the `session-evaluation` skill via the `skill` tool, then instruct it to run `export` with the title slug from step 2 and the session ID from step 3. This creates:
+    - `sessions/<title-slug>-<session-id-noprefix>.md` — evaluation sidecar
+    - `<title-slug>-<session-id-noprefix>.json.bz2` — compressed session JSON
+    - `<title-slug>-<session-id-noprefix>.sha256` — content integrity hash
 12. **Validate export artifacts**: Verify all three files are non-zero:
     ```
     ls -l sessions/<title-slug>-<session-id-noprefix>.md

@@ -66,7 +66,7 @@ Run the full session export pipeline: save the evaluation summary as a markdown 
 
 **Process:**
 
-1. **Get session ID**: Run `opencode session list` and identify the most recent session (the current one).
+1. **Get session ID**: Run `opencode session list` and identify the most recent session (the current one). The ID includes the `ses_` prefix (e.g., `ses_1dfd712a5ffe...`). Pass the full prefixed ID when calling the export script. The noprefix form (without `ses_`) is used only for filenames.
 2. **Get title slug**: Use the slug from the most recent `generate` command output. If none exists, prompt the user to provide one (e.g., `2026-05-11-deepenc-harness-setup`).
 3. **Write evaluation sidecar**: Write the evaluation summary (the same output as `generate`) to `sessions/<title-slug>-<session-id-noprefix>.md`. Use the `write` tool.
 4. **Export archive**: Run `bash sessions/export-session.sh <title-slug> <session-id>` to create:

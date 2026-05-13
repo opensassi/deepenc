@@ -105,6 +105,27 @@ Remove a skill from the system:
 
 ---
 
+### `commit`
+
+Create a single git commit with all skill changes made during this session.
+
+**Process:**
+1. `git add .opencode/skills/ .opencode/opencode.json`
+2. Build the commit body:
+   ```
+   audit(skills): <comma-separated names>
+
+   - <skill-name>: <short description of change>
+   ```
+   The subject line auto-generates from the list of revised skill names. The bullet descriptions come from the audit observations or the user's stated reasons for each revision.
+3. If the user provided a custom message, use that. If they only provided a subject, use it and auto-generate the bullet body. If neither, auto-generate the full message.
+4. `git commit -m "<message>"`
+5. Do NOT push.
+
+**Constraints**: Stages only `.opencode/skills/` and `opencode.json`. No tests, no session archive, no push. Independent of the `git` skill's `finish session` workflow.
+
+---
+
 ### `audit skills`
 
 Analyze the current session context (loaded skills, commands invoked, files modified) and cross-reference against every existing `.opencode/skills/*/SKILL.md`. Propose targeted revisions to any skill that could be more effective for the session's domain.
@@ -123,18 +144,23 @@ Analyze the current session context (loaded skills, commands invoked, files modi
    - Missing cross-references (Skill A should call Skill B for a subtask)
    - Inconsistent terminology or conventions
 
-4. **Propose revisions** — Output a structured list:
+4. **Propose revisions** — Output a numbered list:
 
 ```
-### Audit: <skill-name>
+### Audit Results
 
-**Observation**: <what was observed during the session>
-**Gap**: <what's missing or suboptimal>
-**Proposal**: <specific change to SKILL.md>
-**Priority**: <High / Medium / Low>
+1. **<skill-name>**
+   - **Observation**: <what was observed during the session>
+   - **Gap**: <what's missing or suboptimal>
+   - **Proposal**: <specific change to SKILL.md>
+   - **Priority**: <High / Medium / Low>
+
+2. **<skill-name>**
+   ...
 ```
 
-5. **Ask to apply** — End with: "Apply any of these with `save skill`? Reply with the skill names to revise, or 'none' to dismiss."
+5. **Ask to apply** — End with: "Apply any of these with `save skill`? Reply with the numbers (e.g., '1, 2, 5') or skill names to revise, or 'none' to dismiss."
+6. **Offer to commit** — After saves complete, ask: "Commit these changes? Reply with a message, press enter for auto-generated summary, or 'skip' to defer."
 
 **Constraints**:
 - Do NOT propose changes to `skill-manager` itself (avoids recursion).
@@ -159,6 +185,7 @@ During skill design, follow these conventions:
 - **Proposal template** is the standard model for all new skills — the agent generates it from the user's draft, the user does not fill it in manually.
 - **Context safety** — Never load other skills via the `skill` tool. Use the `read` tool on `.opencode/skills/<name>/SKILL.md` to inspect them. Loading a skill via the `skill` tool replaces the active agent context and loses the skill‑manager persona.
 - **No unregistered skills** — `save skill` must register in `opencode.json`. A skill directory without a corresponding `"<name>": "allow"` entry in `opencode.json` is orphaned and will not be loaded. `show skills` must detect and flag these.
+- **`commit` is for skill-only commits** — It stages only `.opencode/skills/` and `opencode.json`. It does not run tests, create session archives, rebase, or push. Independent of the `git` skill's `finish session` workflow.
 
 ---
 
