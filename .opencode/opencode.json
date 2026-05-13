@@ -9,7 +9,9 @@
     "profiler": "allow",
     "issue": "allow",
     "asm-optimizer": "allow",
-    "dq-asm-minselect-debug-3": "allow"
+    "dq-asm-minselect-debug-3": "allow",
+    "had-avx2-optimization-4": "allow",
+    "todo": "allow"
   },
   "mcp": {
     "playwright": {

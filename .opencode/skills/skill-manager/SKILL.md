@@ -21,15 +21,17 @@ When activated:
 1. **Read all skills and show them** — Read every `.opencode/skills/*/SKILL.md` file and the `opencode.json` permissions block. Automatically run the `show skills` command: output a table of all skills with name, description, and enabled/disabled status. Do not initiate a new design session.
    - **If no skills exist**: Report that no skills are registered and guide the user toward `create skill`.
 
-2. **Context safety** — When inspecting or reading existing skills, use the `read` tool to access their `SKILL.md` files directly. **Never use the `skill` tool** to load another skill into context — doing so injects that skill's instructions and overwrites the current agent's behavior. The `skill` tool should only be used for the skill-manager's own activation.
+2. **Detect unregistered skills** — During `show skills`, compare the set of directories in `.opencode/skills/` against the keys in `opencode.json`'s `skills` block. Any directory without a matching `"<name>": "allow"` entry must be flagged as **UNREGISTERED** in the table. These skills exist on disk but will not be loaded by the system. Suggest `revise skill` or manual registration to fix.
 
-3. **Analyze the user's request** — When the user provides a free-form description for a new skill (e.g., "create a skill for scanning git history"), analyze it silently for completeness across the standard template fields: name, description, persona, on-activation behavior, commands, and design principles.
+4. **Context safety** — When inspecting or reading existing skills, use the `read` tool to access their `SKILL.md` files directly. **Never use the `skill` tool** to load another skill into context — doing so injects that skill's instructions and overwrites the current agent's behavior. The `skill` tool should only be used for the skill-manager's own activation.
 
-4. **Propose a complete skill** — Using the `create skill` proposal template, generate a full skill structure with reasonable defaults for any missing fields. Present it as a formatted block.
+5. **Analyze the user's request** — When the user provides a free-form description for a new skill (e.g., "create a skill for scanning git history"), analyze it silently for completeness across the standard template fields: name, description, persona, on-activation behavior, commands, and design principles.
 
-5. **Iterate on feedback** — The user provides free-form feedback (e.g., "add a restart command", "persona should be more sysadmin"). Update the proposal and re-present it. Repeat until the user says `save skill`.
+6. **Propose a complete skill** — Using the `create skill` proposal template, generate a full skill structure with reasonable defaults for any missing fields. Present it as a formatted block.
 
-6. **Free-form revision requests** (e.g., "add a command to the formatter skill") — Treat as an implicit `revise skill <name>` command. Propose structured revisions, then ask to apply via `save skill`. Do not write any file until `save skill` is explicitly issued.
+7. **Iterate on feedback** — The user provides free-form feedback (e.g., "add a restart command", "persona should be more sysadmin"). Update the proposal and re-present it. Repeat until the user says `save skill`.
+
+8. **Free-form revision requests** (e.g., "add a command to the formatter skill") — Treat as an implicit `revise skill <name>` command. Propose structured revisions, then ask to apply via `save skill`. Do not write any file until `save skill` is explicitly issued.
 
 ---
 
@@ -86,7 +88,7 @@ Generate the complete `SKILL.md` content from the currently agreed design (from 
 
 1. Validate the frontmatter (name and description must be present).
 2. Write the file to `.opencode/skills/<name>/SKILL.md`.
-3. Update `opencode.json` to add `"<name>": "allow"` if not already present.
+3. **Update `opencode.json`**: Add `"<name>": "allow"` to the `skills` block. If the name is already present, verify it's set to `"allow"` and upgrade if needed. **After writing, re-read the file and confirm the entry is present** — do not assume the write succeeded.
 4. Confirm the action.
 
 Error if there is no active design in progress.
@@ -100,6 +102,45 @@ Remove a skill from the system:
 3. Remove the directory `.opencode/skills/<name>/` and all its contents.
 4. Remove the `"<name>"` entry from the permissions block in `opencode.json`.
 5. Confirm the deletion.
+
+---
+
+### `audit skills`
+
+Analyze the current session context (loaded skills, commands invoked, files modified) and cross-reference against every existing `.opencode/skills/*/SKILL.md`. Propose targeted revisions to any skill that could be more effective for the session's domain.
+
+**Process:**
+
+1. **Collect session context** — List all skills loaded during this session (`skill <name>` invocations), all `implement`, `bench`, `assess`, `spec`, or other domain commands that were run, and all files that were created or modified.
+
+2. **Identify coverage gaps** — For each loaded skill, compare the commands and workflows that were actually used against the commands defined in its `SKILL.md`. Identify:
+   - Commands that were needed but don't exist (suggest `create` or add via `revise`)
+   - Commands that exist but weren't helpful (suggest deprecation or revision)
+   - Workflows that were improvised ad-hoc by the user/agent but should be formalized as a command
+
+3. **Cross-reference skills** — If the session used multiple skills, check for:
+   - Overlapping functionality (two skills doing the same thing)
+   - Missing cross-references (Skill A should call Skill B for a subtask)
+   - Inconsistent terminology or conventions
+
+4. **Propose revisions** — Output a structured list:
+
+```
+### Audit: <skill-name>
+
+**Observation**: <what was observed during the session>
+**Gap**: <what's missing or suboptimal>
+**Proposal**: <specific change to SKILL.md>
+**Priority**: <High / Medium / Low>
+```
+
+5. **Ask to apply** — End with: "Apply any of these with `save skill`? Reply with the skill names to revise, or 'none' to dismiss."
+
+**Constraints**:
+- Do NOT propose changes to `skill-manager` itself (avoids recursion).
+- Do NOT propose changes to skills that were not loaded in the current session (can't audit what wasn't used).
+- If the session loaded no skills, report and exit.
+- This is read-only until the user picks proposals and says `save skill`.
 
 ---
 
@@ -117,6 +158,7 @@ During skill design, follow these conventions:
 - **Name format**: always use kebab-case for skill directory and permission names.
 - **Proposal template** is the standard model for all new skills — the agent generates it from the user's draft, the user does not fill it in manually.
 - **Context safety** — Never load other skills via the `skill` tool. Use the `read` tool on `.opencode/skills/<name>/SKILL.md` to inspect them. Loading a skill via the `skill` tool replaces the active agent context and loses the skill‑manager persona.
+- **No unregistered skills** — `save skill` must register in `opencode.json`. A skill directory without a corresponding `"<name>": "allow"` entry in `opencode.json` is orphaned and will not be loaded. `show skills` must detect and flag these.
 
 ---
 

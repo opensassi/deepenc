@@ -37,7 +37,7 @@ Begin a new development session from a clean baseline.
 
 Complete the current session: create a single atomic commit, rebase onto latest `main`, run tests, generate session evaluation, and push.
 
-> **Ordering constraint**: Commit must be created *before* rebase so that rebase moves the single commit to the tip of main. The commit message must be obtained *before* the commit because it requires data from `generate` and `opencode session list`.
+> **Ordering constraint**: Commit must be created *before* rebase so that rebase moves the single commit to the tip of main. The commit message must be obtained *before* the commit because it requires data from `generate` and `opencode session list`. The evaluation `.md` sidecar is written from the `generate` output (step 10) *after* the commit, so it reflects the final session state including any test-fix loops.
 
 **Process:**
 1. **Stage all changes**: `git add -A`
@@ -57,10 +57,18 @@ Complete the current session: create a single atomic commit, rebase onto latest 
    - `git add -A`
    - `git commit --amend --no-edit` (preserves the commit message)
    - Go back to step 6 (re-rebase onto latest main)
-10. **Export session evaluation**: Load the `session-evaluation` skill via the `skill` tool, then instruct it to run `export`. This writes `sessions/<title-slug>-<session-id-noprefix>.md`, `.json.bz2`, and `.sha256` without any git operations.
-11. **Stage session artifacts**: `git add sessions/`
-12. **Amend commit to include artifacts**: `git commit --amend --no-edit` (preserves the commit message, includes sidecar + archive files)
-13. **Push**: `git push`
+10. **Write evaluation sidecar**: Write the evaluation summary (produced by step 2's `generate` output) to `sessions/<title-slug>-<session-id-noprefix>.md` using the `write` tool.
+11. **Export session archive**: Run `bash sessions/export-session.sh <title-slug> ses_<session-id-noprefix>`. This creates `sessions/<title-slug>-<session-id-noprefix>.json.bz2` (compressed session JSON) and `.sha256` (content hash).
+12. **Validate export artifacts**: Verify all three files are non-zero:
+    ```
+    ls -l sessions/<title-slug>-<session-id-noprefix>.md
+    ls -l sessions/<title-slug>-<session-id-noprefix>.json.bz2
+    ls -l sessions/<title-slug>-<session-id-noprefix>.sha256
+    ```
+    If any file is 0 bytes, re-run step 11. If the `.md` is missing, re-write it (the content was produced in step 2).
+13. **Stage session artifacts**: `git add sessions/`
+14. **Amend commit to include artifacts**: `git commit --amend --no-edit` (preserves the commit message, includes sidecar + archive files)
+15. **Push**: `git push`
 
 ### `sync`
 
