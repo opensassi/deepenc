@@ -1,0 +1,631 @@
+{
+  "date": "2026-05-12",
+  "total_prompter_time_hours": 24.85,
+  "total_sme_time_hours": 218.5,
+  "ai_multiplier": 8.8,
+  "total_sessions": 8,
+  "top_subject_areas": [
+    {
+      "name": "vvenc",
+      "prompter_time_hours": 1.3114,
+      "sme_time_hours": 10.6476,
+      "ai_multiplier": 8.1
+    },
+    {
+      "name": "simd",
+      "prompter_time_hours": 1.1667,
+      "sme_time_hours": 9.7436,
+      "ai_multiplier": 8.4
+    },
+    {
+      "name": "VVenC",
+      "prompter_time_hours": 0.6212,
+      "sme_time_hours": 6.8718,
+      "ai_multiplier": 11.1
+    },
+    {
+      "name": "depquant",
+      "prompter_time_hours": 0.875,
+      "sme_time_hours": 6.4103,
+      "ai_multiplier": 7.3
+    },
+    {
+      "name": "vvc",
+      "prompter_time_hours": 0.7917,
+      "sme_time_hours": 6.4103,
+      "ai_multiplier": 8.1
+    },
+    {
+      "name": "avx2",
+      "prompter_time_hours": 0.7917,
+      "sme_time_hours": 6.4103,
+      "ai_multiplier": 8.1
+    },
+    {
+      "name": "lightgbm",
+      "prompter_time_hours": 0.4864,
+      "sme_time_hours": 4.1818,
+      "ai_multiplier": 8.6
+    },
+    {
+      "name": "cmake",
+      "prompter_time_hours": 0.4864,
+      "sme_time_hours": 4.1818,
+      "ai_multiplier": 8.6
+    },
+    {
+      "name": "ML-guided encoding",
+      "prompter_time_hours": 0.4545,
+      "sme_time_hours": 3.6364,
+      "ai_multiplier": 8.0
+    },
+    {
+      "name": "training data pipeline",
+      "prompter_time_hours": 0.4545,
+      "sme_time_hours": 3.6364,
+      "ai_multiplier": 8.0
+    },
+    {
+      "name": "GDB debugging",
+      "prompter_time_hours": 0.4545,
+      "sme_time_hours": 3.6364,
+      "ai_multiplier": 8.0
+    },
+    {
+      "name": "TypeScript CLI",
+      "prompter_time_hours": 0.4545,
+      "sme_time_hours": 3.6364,
+      "ai_multiplier": 8.0
+    },
+    {
+      "name": "VVC encoder",
+      "prompter_time_hours": 0.4545,
+      "sme_time_hours": 3.6364,
+      "ai_multiplier": 8.0
+    },
+    {
+      "name": "feedback flywheel",
+      "prompter_time_hours": 0.4545,
+      "sme_time_hours": 3.6364,
+      "ai_multiplier": 8.0
+    },
+    {
+      "name": "spec documentation",
+      "prompter_time_hours": 0.4545,
+      "sme_time_hours": 3.6364,
+      "ai_multiplier": 8.0
+    },
+    {
+      "name": "MCP debugger",
+      "prompter_time_hours": 0.4545,
+      "sme_time_hours": 3.6364,
+      "ai_multiplier": 8.0
+    },
+    {
+      "name": "x265",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "SIMD dispatch",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "perf profiling",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "top-down analysis",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "NASM assembly",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "video encoding",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "C++14",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "CMake",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "frontend bound",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "dispatch table",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "syncToGlobal",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "ENABLE_ASM",
+      "prompter_time_hours": 0.2462,
+      "sme_time_hours": 3.5385,
+      "ai_multiplier": 14.4
+    },
+    {
+      "name": "AVX2",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "assembly-optimization",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "VVC",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "CPU-pipeline",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "microarchitecture",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "benchmarking",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "performance-analysis",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "asm-debug",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "experiment-archive",
+      "prompter_time_hours": 0.375,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 8.9
+    },
+    {
+      "name": "x86-asm",
+      "prompter_time_hours": 0.2917,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 11.4
+    },
+    {
+      "name": "sad",
+      "prompter_time_hours": 0.2917,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 11.4
+    },
+    {
+      "name": "hadamard",
+      "prompter_time_hours": 0.2917,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 11.4
+    },
+    {
+      "name": "encoder-optimization",
+      "prompter_time_hours": 0.2917,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 11.4
+    },
+    {
+      "name": "microbenchmark",
+      "prompter_time_hours": 0.2917,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 11.4
+    },
+    {
+      "name": "register-allocation",
+      "prompter_time_hours": 0.2917,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 11.4
+    },
+    {
+      "name": "butterfly",
+      "prompter_time_hours": 0.2917,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 11.4
+    },
+    {
+      "name": "dispatch-table",
+      "prompter_time_hours": 0.2917,
+      "sme_time_hours": 3.3333,
+      "ai_multiplier": 11.4
+    },
+    {
+      "name": "h.266",
+      "prompter_time_hours": 0.5,
+      "sme_time_hours": 3.0769,
+      "ai_multiplier": 6.2
+    },
+    {
+      "name": "assembly",
+      "prompter_time_hours": 0.5,
+      "sme_time_hours": 3.0769,
+      "ai_multiplier": 6.2
+    },
+    {
+      "name": "optimization",
+      "prompter_time_hours": 0.5,
+      "sme_time_hours": 3.0769,
+      "ai_multiplier": 6.2
+    },
+    {
+      "name": "tcq",
+      "prompter_time_hours": 0.5,
+      "sme_time_hours": 3.0769,
+      "ai_multiplier": 6.2
+    },
+    {
+      "name": "codec",
+      "prompter_time_hours": 0.5,
+      "sme_time_hours": 3.0769,
+      "ai_multiplier": 6.2
+    },
+    {
+      "name": "performance",
+      "prompter_time_hours": 0.5,
+      "sme_time_hours": 3.0769,
+      "ai_multiplier": 6.2
+    },
+    {
+      "name": "dq.checkAllRdCosts",
+      "prompter_time_hours": 0.5,
+      "sme_time_hours": 3.0769,
+      "ai_multiplier": 6.2
+    },
+    {
+      "name": "asm-optimizer",
+      "prompter_time_hours": 0.5,
+      "sme_time_hours": 3.0769,
+      "ai_multiplier": 6.2
+    },
+    {
+      "name": "opencode",
+      "prompter_time_hours": 0.2,
+      "sme_time_hours": 0.7222,
+      "ai_multiplier": 3.6
+    },
+    {
+      "name": "git-workflow",
+      "prompter_time_hours": 0.2,
+      "sme_time_hours": 0.7222,
+      "ai_multiplier": 3.6
+    },
+    {
+      "name": "session-evaluation",
+      "prompter_time_hours": 0.2,
+      "sme_time_hours": 0.7222,
+      "ai_multiplier": 3.6
+    },
+    {
+      "name": "skill-management",
+      "prompter_time_hours": 0.1667,
+      "sme_time_hours": 0.6667,
+      "ai_multiplier": 4.0
+    },
+    {
+      "name": "issue-creation",
+      "prompter_time_hours": 0.1667,
+      "sme_time_hours": 0.6667,
+      "ai_multiplier": 4.0
+    },
+    {
+      "name": "audit",
+      "prompter_time_hours": 0.1667,
+      "sme_time_hours": 0.6667,
+      "ai_multiplier": 4.0
+    },
+    {
+      "name": "todo",
+      "prompter_time_hours": 0.1667,
+      "sme_time_hours": 0.6667,
+      "ai_multiplier": 4.0
+    },
+    {
+      "name": "debugging-skills",
+      "prompter_time_hours": 0.1667,
+      "sme_time_hours": 0.6667,
+      "ai_multiplier": 4.0
+    },
+    {
+      "name": "workflow-automation",
+      "prompter_time_hours": 0.1667,
+      "sme_time_hours": 0.6667,
+      "ai_multiplier": 4.0
+    },
+    {
+      "name": "cuda-partitioning",
+      "prompter_time_hours": 0.0318,
+      "sme_time_hours": 0.5455,
+      "ai_multiplier": 17.1
+    },
+    {
+      "name": "ml-training",
+      "prompter_time_hours": 0.0318,
+      "sme_time_hours": 0.5455,
+      "ai_multiplier": 17.1
+    },
+    {
+      "name": "benchmark",
+      "prompter_time_hours": 0.0318,
+      "sme_time_hours": 0.5455,
+      "ai_multiplier": 17.1
+    },
+    {
+      "name": "harness",
+      "prompter_time_hours": 0.0318,
+      "sme_time_hours": 0.5455,
+      "ai_multiplier": 17.1
+    },
+    {
+      "name": "typescript",
+      "prompter_time_hours": 0.0318,
+      "sme_time_hours": 0.5455,
+      "ai_multiplier": 17.1
+    },
+    {
+      "name": "data-pipeline",
+      "prompter_time_hours": 0.0318,
+      "sme_time_hours": 0.5455,
+      "ai_multiplier": 17.1
+    },
+    {
+      "name": "speedup-analysis",
+      "prompter_time_hours": 0.0318,
+      "sme_time_hours": 0.5455,
+      "ai_multiplier": 17.1
+    },
+    {
+      "name": "cpp-testing",
+      "prompter_time_hours": 0.0318,
+      "sme_time_hours": 0.5455,
+      "ai_multiplier": 17.1
+    },
+    {
+      "name": "skill-coordination",
+      "prompter_time_hours": 0.0333,
+      "sme_time_hours": 0.0556,
+      "ai_multiplier": 1.7
+    },
+    {
+      "name": "project-management",
+      "prompter_time_hours": 0.0333,
+      "sme_time_hours": 0.0556,
+      "ai_multiplier": 1.7
+    },
+    {
+      "name": "devops",
+      "prompter_time_hours": 0.0333,
+      "sme_time_hours": 0.0556,
+      "ai_multiplier": 1.7
+    },
+    {
+      "name": "export-pipeline",
+      "prompter_time_hours": 0.0333,
+      "sme_time_hours": 0.0556,
+      "ai_multiplier": 1.7
+    },
+    {
+      "name": "deepenc",
+      "prompter_time_hours": 0.0333,
+      "sme_time_hours": 0.0556,
+      "ai_multiplier": 1.7
+    }
+  ],
+  "session_breakdown": [
+    {
+      "session_id": "2026-05-12-asm-optimizer-dq-implementation",
+      "duration_minutes": 390,
+      "prompter_time_minutes": 390,
+      "sme_time_minutes": 2400,
+      "top_component_summary": "Hand-written AVX2 assembly implementation of DQInternSimd::checkAllRdCosts -- the first NASM/GAS assembly function in the vvenc Phase 2 dispatch table.",
+      "tags": [
+        "vvenc",
+        "vvc",
+        "h.266",
+        "simd",
+        "avx2",
+        "assembly",
+        "optimization",
+        "depquant",
+        "tcq",
+        "codec",
+        "performance",
+        "dq.checkAllRdCosts",
+        "asm-optimizer"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-12-dq-asm-minselect-debug-3",
+      "duration_minutes": 270,
+      "prompter_time_minutes": 270,
+      "sme_time_minutes": 2400,
+      "top_component_summary": "Fixed and evaluated vvenc_dq_checkAllRdCosts_avx2 ASM implementation with experiment archive.",
+      "tags": [
+        "AVX2",
+        "assembly-optimization",
+        "VVenC",
+        "VVC",
+        "depquant",
+        "CPU-pipeline",
+        "microarchitecture",
+        "benchmarking",
+        "performance-analysis",
+        "asm-debug",
+        "simd",
+        "experiment-archive"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-12-lightgbm-training-pipeline",
+      "duration_minutes": 30,
+      "prompter_time_minutes": 21,
+      "sme_time_minutes": 360,
+      "top_component_summary": "Complete ML training pipeline execution with harness tooling updates and test fixes.",
+      "tags": [
+        "lightgbm",
+        "vvenc",
+        "cuda-partitioning",
+        "ml-training",
+        "benchmark",
+        "harness",
+        "typescript",
+        "data-pipeline",
+        "speedup-analysis",
+        "cmake",
+        "cpp-testing"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-12-lightgbm-workflow-implementation",
+      "duration_minutes": 360,
+      "prompter_time_minutes": 300,
+      "sme_time_minutes": 2400,
+      "top_component_summary": "Full LightGBM training data to model training to ML inference to benchmark to feedback flywheel pipeline, end-to-end.",
+      "tags": [
+        "vvenc",
+        "lightgbm",
+        "ML-guided encoding",
+        "training data pipeline",
+        "GDB debugging",
+        "TypeScript CLI",
+        "cmake",
+        "VVC encoder",
+        "feedback flywheel",
+        "spec documentation",
+        "MCP debugger"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-12-sad-avx2-port",
+      "duration_minutes": 210,
+      "prompter_time_minutes": 210,
+      "sme_time_minutes": 2400,
+      "top_component_summary": "Four SAD AVX2 assembly kernels (8xN, 16xN, 32xN, 64xN) with 5-29% speedup vs C++ SIMD, wired into the encoder dispatch via per-instance function pointer override.",
+      "tags": [
+        "x86-asm",
+        "avx2",
+        "sad",
+        "hadamard",
+        "vvenc",
+        "vvc",
+        "encoder-optimization",
+        "simd",
+        "microbenchmark",
+        "register-allocation",
+        "butterfly",
+        "dispatch-table"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-12-skill-manager-revisions",
+      "duration_minutes": 90,
+      "prompter_time_minutes": 90,
+      "sme_time_minutes": 360,
+      "top_component_summary": "Three skill revisions and one new skill: skill-manager (unregistered skill detection, registration verification), git (export workflow fix, artifact validation), and todo (extract to issue to skill pipeline).",
+      "tags": [
+        "skill-management",
+        "opencode",
+        "git-workflow",
+        "session-evaluation",
+        "issue-creation",
+        "audit",
+        "todo",
+        "debugging-skills",
+        "workflow-automation"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-12-skill-session-evaluation",
+      "duration_minutes": 18,
+      "prompter_time_minutes": 18,
+      "sme_time_minutes": 30,
+      "top_component_summary": "Session evaluation export for a zero-code-change coordination session -- evaluation sidecar, compressed JSON archive, and integrity hash.",
+      "tags": [
+        "opencode",
+        "session-evaluation",
+        "git-workflow",
+        "skill-coordination",
+        "project-management",
+        "devops",
+        "export-pipeline",
+        "vvenc",
+        "deepenc"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-12-x265-dispatch-table-redesign",
+      "duration_minutes": 192,
+      "prompter_time_minutes": 192,
+      "sme_time_minutes": 2760,
+      "top_component_summary": "Centralized VVencPrimitive SIMD dispatch table -- 14 sub-structs, about 146 function pointer entries, with syncToGlobal() pattern and NASM assembly registration infrastructure.",
+      "tags": [
+        "x265",
+        "VVenC",
+        "SIMD dispatch",
+        "perf profiling",
+        "top-down analysis",
+        "NASM assembly",
+        "video encoding",
+        "C++14",
+        "CMake",
+        "frontend bound",
+        "dispatch table",
+        "syncToGlobal",
+        "ENABLE_ASM"
+      ],
+      "human_confidence": "high"
+    }
+  ]
+}
