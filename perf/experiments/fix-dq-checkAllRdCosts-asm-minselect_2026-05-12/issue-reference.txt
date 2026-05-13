@@ -1,0 +1,12 @@
+Issue Title: fix(dq): checkAllRdCosts ASM min-select — valBest/idxBest blend mask corrupts absLevel
+Issue URL:   https://github.com/opensassi/deepenc/issues/3
+Issue ID:    3
+State:       CLOSED
+Close Date:  2026-05-12
+Close Comment:
+  Fix: Added missing Round 1 min-select (vpcmpgtq comparisons + valCand construction)
+  to .L_select_asm; fixed sig02/sig13 register confusion in all three spt dispatches;
+  fixed vpshufb mask indices for EOCSBB numSig handling; precomputed cffBits base
+  pointers with LEA chains to replace imul-based addressing.
+  All 16 microbenchmark patterns pass bit-exact.
+  Benchmark shows within-noise performance vs baseline v1.14.0.

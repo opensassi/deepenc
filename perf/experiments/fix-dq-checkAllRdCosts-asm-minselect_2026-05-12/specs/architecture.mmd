@@ -1,0 +1,58 @@
+graph TB
+    subgraph Frontend["Frontend (Decode)"]
+        L1I["L1I Cache<br/>32KB 8-way"]
+        IQ["Instruction Queue<br/>20 entries"]
+        DEC["Decode<br/>4-wide"]
+        UQ["µOp Queue<br/>72 entries"]
+        LSD["Loop Stream Detector"]
+    end
+
+    subgraph Alloc["Allocate / Rename"]
+        REN["Register Rename<br/>PRF: 280 int + 224 vec"]
+        ROB["Reorder Buffer<br/>224 entries"]
+        RS["Reservation Stations<br/>97 entries"]
+    end
+
+    subgraph Exec["Execution Engine"]
+        P0["Port 0<br/>ALU, VecMul, VecShift"]
+        P1["Port 1<br/>ALU, VecInt, SlowInt"]
+        P2["Port 2<br/>Load AGU"]
+        P3["Port 3<br/>Load AGU"]
+        P4["Port 4<br/>Store Data"]
+        P5["Port 5<br/>VecShuffle, Blend, Branch"]
+        P6["Port 6<br/>ALU, Branch"]
+    end
+
+    subgraph Mem["Memory Subsystem"]
+        direction TB
+        SB["Store Buffer<br/>28 entries"]
+        LDQ["Load Queue<br/>12 entries"]
+        L1D["L1D Cache<br/>48KB 12-way"]
+        MOB["Memory Order Buffer"]
+        L2["L2 Cache<br/>512KB 8-way"]
+        LLC["L3 Cache (LLC)<br/>8MB 16-way"]
+    end
+
+    subgraph Instr["Instruction Input<br/>(GAS inline asm)"]
+        ASM["vvenc_dq_checkAllRdCosts_avx2<br/>~250 instructions"]
+    end
+
+    ASM --> L1I
+    L1I --> IQ
+    IQ --> DEC
+    DEC --> UQ
+    LSD -.->|loop capture| UQ
+    UQ --> REN
+    REN --> ROB
+    REN --> RS
+    RS -->|wakeup/select| Exec
+    P2 --> LDQ
+    P3 --> LDQ
+    LDQ --> L1D
+    P4 --> SB
+    SB --> L1D
+    P5 --> LSD
+    L1D --> L2
+    L2 --> LLC
+    MOB -.->|order| LDQ
+    MOB -.->|order| SB

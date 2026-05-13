@@ -1,0 +1,104 @@
+sequenceDiagram
+    participant L1I as L1I Cache
+    participant IQ as Instr Queue
+    participant DEC as Decode (4-wide)
+    participant REN as Rename
+    participant ROB as ROB/RS
+    participant P0P1 as Port 0/1 (ALU)
+    participant P2P3 as Port 2/3 (Load)
+    participant P4 as Port 4 (Store)
+    participant P5 as Port 5 (Shuffle)
+    participant P6 as Port 6 (Branch)
+    participant L1D as L1D Cache
+
+    rect rgb(200, 220, 240)
+        Note over L1I,P6: BLOCK A — rdCost setup (16 instr)
+        L1I->>IQ: vmovdqu xmm0,[rcx]
+        L1I->>IQ: vmovdqu xmm1,[rcx+16]
+        IQ->>DEC: decode 2× vmovdqu
+        DEC->>REN: rename xmm0,xmm1
+        REN->>ROB: dispatch to RS
+        ROB->>P2P3: vmovdqu (2 uops)
+        P2P3->>L1D: load rdCost[0:1], rdCost[2:3]
+        L1D-->>P2P3: data ready (5c)
+        P2P3-->>ROB: complete
+
+        ROB->>P0P1: vpunpcklqdq, vpunpckhqdq
+        ROB->>P2P3: mov rax,[rsi+40], mov r8,[rsi+24]
+        P2P3->>L1D: load deltaDist
+        ROB->>P0P1: vpaddq ×4 (rdCost Z/A/B calc)
+    end
+
+    rect rgb(200, 240, 200)
+        Note over L1I,P6: BLOCK B — sigBits gather (21 instr)
+        ROB->>P2P3: mov rax,[rcx+384] (sigFracBits ptrs)
+        ROB->>P2P3: movzx ebx,[rcx+264] (ctx.sig[])
+        P2P3->>L1D: 4× ctx loads
+        ROB->>P2P3: vmovq xmm9,[rax+rbx*8] (4× sig loads)
+        P2P3->>L1D: 4× sigFracBits loads
+        ROB->>P5: vpshufd ×4, vpunpcklqdq ×2 (reorder)
+    end
+
+    rect rgb(240, 220, 200)
+        Note over L1I,P6: BLOCK C — cffBits gather (33 instr)
+        ROB->>P2P3: movzx ebx,[rcx+268] (ctx.cff[0..3])
+        ROB->>P2P3: mov rax,[rcx+416] (gtxFracBits ptr)
+        ROB->>P1P5: lea rbp,[rax+rbx*8] (base0..3 computation)
+        ROB->>P2P3: movsx r15d,[rsi+16] (absLevel loads)
+        ROB->>P5: vmovd xmm14,[r13+rbx*4] (first cff load)
+        P2P3->>L1D: load cffBits ×4
+        L1D-->>P5: data arrives
+        ROB->>P5: vpinsrd ×3 (with memory-folded loads)
+        ROB->>P0P1: vpmovsxdq (sign extend)
+        ROB->>P0P1: vpaddq ×4 (add to rdCost A/B)
+    end
+
+    rect rgb(240, 240, 200)
+        Note over L1I,P6: BLOCK D — spt dispatch
+        ROB->>P0: cmp edi,0
+        ROB->>P6: je .L_iscsbb_asm (predicted taken ~33%)
+    end
+
+    rect rgb(220, 240, 240)
+        Note over L1I,P6: BLOCK E — ISCSBB sig add (10 instr)
+        ROB->>P0P1: vpmovzxdq ymm14,xmm9
+        ROB->>P5: vextracti128 xmm15,ymm14,1
+        ROB->>P0P1: vpaddq ×4 (Z01,A01,B23,B23 += sig)
+    end
+
+    rect rgb(240, 200, 220)
+        Note over L1I,P6: BLOCK F — min-select Round 1 (12 instr)
+        ROB->>P2P3: movsx r14d,[rsi+32] (pq[2].absLevel)
+        ROB->>P2P3: movsx r15d,[rsi+16] (pq[1].absLevel)
+        ROB->>P5: vpxor xmm11,xmm11 (zero valBest)
+        ROB->>P5: vpinsrd xmm11,xmm11,r14d,2
+        ROB->>P5: vpinsrd xmm11,xmm11,r15d,3
+        ROB->>P2P3: vmovdqu xmm12,[rip+.L_idxBest] (load const)
+        ROB->>P2P3: movsx r8d,[rsi+0] (pq[0])
+        ROB->>P2P3: movsx r9d,[rsi+48] (pq[3])
+        ROB->>P5: vpxor xmm13,xmm13 + vpinsrd ×2 (valCand)
+        ROB->>P0P1: vpcmpgtq ×2 (Z01>A01? B23>Z23?)
+        ROB->>P5: vpblendw + vpshufd (combine masks)
+        ROB->>P5: vpblendvb ×4 (blend rdBest + valBest + idxBest)
+    end
+
+    rect rgb(220, 200, 240)
+        Note over L1I,P6: BLOCK G — min-select Round 2 + valCand2 (20 instr)
+        ROB->>P0P1: vpcmpgtq ×2 (rdBest>B01? rdBest>A23?)
+        ROB->>P5: vpblendw + vpshufd (combine R2 masks)
+        ROB->>P0P1: vpblendvb rdBest ×2
+        ROB->>P2P3: movsx ×4 (pq[] absLevel again)
+        ROB->>P5: vmovd + vpinsrd ×3 (valCand2)
+        ROB->>P5: vpblendvb valBest + idxBest (Round 2 blends)
+    end
+
+    rect rgb(200, 240, 240)
+        Note over L1I,P6: BLOCK H — Store results (14 instr)
+        ROB->>P5: vpxor + vpackssdw ×2 + vpacksswb (pack)
+        ROB->>P4: vmovdqu [rdx],xmm9 (rdCost[0:1])
+        ROB->>P4: vmovdqu [rdx+16],xmm10 (rdCost[2:3])
+        ROB->>P4: vmovq [rdx+32],xmm11 (absLevel)
+        ROB->>P4: vmovd [rdx+40],xmm12 (prevId)
+        ROB->>P0: vzeroupper
+        ROB->>P6: ret
+    end

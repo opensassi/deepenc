@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>vvenc_dq_checkAllRdCosts_avx2 — CPU Pipeline Visualization</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Courier New', monospace; background: #1a1a2e; color: #e0e0e0; display: flex; justify-content: center; padding: 20px; }
+#container { max-width: 1400px; width: 100%; }
+h1, h2 { color: #00d4ff; margin-bottom: 8px; }
+h1 { font-size: 18px; }
+h2 { font-size: 14px; margin-top: 16px; }
+#controls { display: flex; align-items: center; gap: 12px; margin: 12px 0; flex-wrap: wrap; }
+#controls button { background: #16213e; color: #e0e0e0; border: 1px solid #00d4ff; padding: 6px 16px; cursor: pointer; font-family: inherit; border-radius: 4px; }
+#controls button:hover { background: #0f3460; }
+#controls input[type="range"] { width: 400px; accent-color: #00d4ff; }
+#controls span { font-size: 12px; min-width: 60px; }
+#kf-label { color: #ffd700; font-size: 12px; min-width: 180px; }
+#chart { position: relative; }
+.axis text { fill: #a0a0a0; font-size: 10px; }
+.axis path, .axis line { stroke: #333; }
+.block-label { fill: #fff; font-size: 11px; font-weight: bold; }
+.instr-bar { stroke: #1a1a2e; stroke-width: 0.5; }
+.instr-bar:hover { opacity: 0.8; cursor: pointer; }
+#tooltip { position: absolute; background: #16213e; border: 1px solid #00d4ff; border-radius: 4px; padding: 8px; font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 0.2s; max-width: 400px; }
+#registers, #uops-bar, #ports-bar { margin-top: 8px; }
+.reg-label { fill: #00d4ff; font-size: 10px; }
+.reg-value { fill: #ffd700; font-size: 9px; }
+.uop-label { fill: #a0a0a0; font-size: 9px; }
+.port-box { fill: #16213e; stroke: #333; }
+.port-active { fill: #e94560; }
+.legend { display: flex; gap: 16px; margin: 8px 0; font-size: 11px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="container">
+  <h1>vvenc_dq_checkAllRdCosts_avx2 — CPU Pipeline Visualization</h1>
+  <p style="font-size:11px;color:#888;">Sunny Cove µarch model | 250 instructions | ISCSBB path | All L1 hits assumed</p>
+
+  <div id="controls">
+    <button data-testid="play-pause" id="play-btn">▶ Play</button>
+    <button id="reset-btn">⟲ Reset</button>
+    <span id="kf-display"><span id="kf-idx">0</span>/<span id="kf-total">15</span></span>
+    <span id="kf-label">block-a-start</span>
+    <input type="range" id="cycle-slider" min="0" max="62" value="0" step="1">
+    <span id="cycle-display">Cycle 0</span>
+  </div>
+
+  <div id="chart"></div>
+  <div id="tooltip"></div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#4ecca3;"></div> Load (P2/P3)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e94560;"></div> ALU (P0/P1)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#ffd700;"></div> Shuffle (P5)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#a020f0;"></div> Store (P4)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#00d4ff;"></div> Branch (P6)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#666;"></div> Misc/Stack</div>
+  </div>
+
+  <div id="ports-bar"></div>
+  <div id="uops-bar"></div>
+  <div id="registers"></div>
+</div>
+
+<script>
+(function() {
+const keyframes = [
+  { time: 0,   label: 'block-a-start', desc: 'rdCost loaded: xmm2=Z01, xmm3=Z23' },
+  { time: 4,   label: 'block-a-end',   desc: 'rdCost Z/A/B computed: xmm5..8 ready' },
+  { time: 8,   label: 'block-b-start', desc: 'sigBits gather: ctx.sig loaded, ptrs fetched' },
+  { time: 12,  label: 'block-b-end',   desc: 'sig reorder complete: xmm9=sig02, xmm13=sig13' },
+  { time: 16,  label: 'block-c-start', desc: 'cffBits gather: ctx.cff loaded, base LEAs computing' },
+  { time: 20,  label: 'block-c-cff1',  desc: 'cff B path packed in xmm14: [ctx1][pq2], [ctx3][pq1], [ctx0][pq2], [ctx2][pq1]' },
+  { time: 24,  label: 'block-c-cff2',  desc: 'cff A path packed: rdCost A/B updated with cffBits' },
+  { time: 28,  label: 'block-d-spt',   desc: 'spt dispatch: cmp edi,0 → je ISCSBB (taken)' },
+  { time: 32,  label: 'block-e-add',   desc: 'sig bits added: all rdCost finalized' },
+  { time: 36,  label: 'block-f-r1cmp', desc: 'Round 1 compare: Z01>A01? B23>Z23? masks computed' },
+  { time: 40,  label: 'block-f-r1blend', desc: 'Round 1 blend: valBest, idxBest, rdBest updated' },
+  { time: 44,  label: 'block-g-r2cmp', desc: 'Round 2 compare: rdBest>B01? rdBest>A23?' },
+  { time: 48,  label: 'block-g-r2blend', desc: 'Round 2 blend: final decisions per state' },
+  { time: 52,  label: 'block-h-pack',  desc: 'Pack to i16/i8: vpackssdw, vpacksswb' },
+  { time: 56,  label: 'block-h-store', desc: 'Stored: rdCost[0..3], absLevel, prevId → [rdx]' },
+  { time: 60,  label: 'block-ret',     desc: 'vzeroupper + ret → next call starts' },
+];
+
+// Each instruction as {name, block, ports, latency, start, end, color}
+// Simplified model — 16 representative instructions
+const blocks = [
+  { name: 'rdCost Z/A/B',   start: 0,  end: 6,  color: '#4ecca3' },
+  { name: 'sigBits gather',  start: 6,  end: 14, color: '#4ecca3' },
+  { name: 'sig reorder',     start: 14, end: 18, color: '#ffd700' },
+  { name: 'cffBits base LEA',start: 18, end: 22, color: '#00d4ff' },
+  { name: 'cffB load+insert (0)', start: 20, end: 24, color: '#4ecca3' },
+  { name: 'cffA load+insert (1)', start: 22, end: 26, color: '#4ecca3' },
+  { name: 'cff sign-extend', start: 24, end: 27, color: '#e94560' },
+  { name: 'cff→rdCost add',  start: 26, end: 29, color: '#e94560' },
+  { name: 'spt cmp+branch',  start: 28, end: 30, color: '#00d4ff' },
+  { name: 'ISCSBB sig add',  start: 30, end: 34, color: '#e94560' },
+  { name: 'valBest build',   start: 34, end: 37, color: '#ffd700' },
+  { name: 'pcmpgtq R1',      start: 36, end: 38, color: '#e94560' },
+  { name: 'pblendw+pshufd',  start: 37, end: 39, color: '#ffd700' },
+  { name: 'pblendvb R1 ×4',  start: 38, end: 42, color: '#a020f0' },
+  { name: 'pcmpgtq R2',      start: 40, end: 43, color: '#e94560' },
+  { name: 'pblendvb R2 ×4',  start: 42, end: 47, color: '#a020f0' },
+  { name: 'valCand2 build',  start: 44, end: 47, color: '#ffd700' },
+  { name: 'pack i16/i8',     start: 47, end: 51, color: '#ffd700' },
+  { name: 'store [rdx]',     start: 51, end: 55, color: '#666' },
+  { name: 'vzeroupper+ret',  start: 55, end: 58, color: '#666' },
+];
+
+// Port activity per cycle (simplified — track which ports are busy)
+// For each cycle 0..62, which ports have active uops
+function getPortActivity(cycle) {
+  const pa = { p0: false, p1: false, p2: false, p3: false, p4: false, p5: false, p6: false };
+  for (const b of blocks) {
+    if (cycle >= b.start && cycle < b.end) {
+      if (b.color === '#4ecca3') { pa.p2 = true; pa.p3 = true; } // Load
+      else if (b.color === '#e94560') { pa.p0 = true; pa.p1 = true; } // ALU
+      else if (b.color === '#ffd700') { pa.p5 = true; } // Shuffle
+      else if (b.color === '#a020f0') { pa.p0 = true; pa.p5 = true; } // Blend
+      else if (b.color === '#00d4ff') { pa.p6 = true; } // Branch
+      else if (b.color === '#666') { pa.p4 = true; } // Store
+    }
+  }
+  return pa;
+}
+
+// Compute instructions per block counts
+function getInstrCount(blockIdx) {
+  const counts = [16, 21, 33, 5, 10, 12, 20, 14]; // A..H
+  return counts[blockIdx] || 0;
+}
+
+const totalCycles = 62;
+
+window.ANIMATION_DURATION_MS = 15500;
+window.ANIMATION_KEYFRAMES = keyframes.map(k => ({ time: k.time, label: k.label }));
+window.ANIMATION_VERIFICATION = keyframes.map(k => ({
+  label: k.label,
+  kfTotal: keyframes.length - 1,
+  expectedCycle: k.time * 1
+}));
+
+let currentCycle = 0;
+let playing = false;
+let playInterval = null;
+
+function getCurrentBlockIdx(cycle) {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    if (cycle >= blocks[i].start) return i;
+  }
+  return 0;
+}
+
+function getCurrentKeyframe(cycle) {
+  let kf = keyframes[0];
+  for (const k of keyframes) {
+    if (cycle >= k.time) kf = k;
+  }
+  return kf;
+}
+
+function render(cycle) {
+  currentCycle = cycle;
+  const kf = getCurrentKeyframe(cycle);
+  document.getElementById('kf-idx').textContent = keyframes.indexOf(kf);
+  document.getElementById('kf-label').textContent = kf.label;
+  document.getElementById('cycle-display').textContent = 'Cycle ' + cycle;
+  document.getElementById('cycle-slider').value = cycle;
+
+  // --- Main pipeline chart ---
+  const margin = { top: 20, right: 20, bottom: 30, left: 180 };
+  const width = 1200;
+  const barHeight = 16;
+  const chartHeight = blocks.length * (barHeight + 4) + 40;
+
+  const svg = d3.select('#chart').html('').append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', chartHeight + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Cycle axis
+  const xScale = d3.scaleLinear()
+    .domain([0, totalCycles])
+    .range([0, width]);
+
+  svg.append('g')
+    .attr('class', 'axis')
+    .attr('transform', `translate(0,${chartHeight - 20})`)
+    .call(d3.axisBottom(xScale).ticks(16).tickFormat(d => d + 'c'));
+
+  svg.append('text')
+    .attr('x', width / 2)
+    .attr('y', chartHeight)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#888')
+    .attr('font-size', '10px')
+    .text('Cycle');
+
+  // Current cycle indicator
+  const cursor = svg.append('line')
+    .attr('x1', xScale(cycle))
+    .attr('y1', 0)
+    .attr('x2', xScale(cycle))
+    .attr('y2', chartHeight - 25)
+    .attr('stroke', '#ffd700')
+    .attr('stroke-width', 2)
+    .attr('stroke-dasharray', '4,2');
+
+  // Block labels (left side)
+  blocks.forEach((b, i) => {
+    svg.append('text')
+      .attr('x', -8)
+      .attr('y', i * (barHeight + 4) + barHeight / 2 + 4)
+      .attr('text-anchor', 'end')
+      .attr('class', 'block-label')
+      .attr('fill', cycle >= b.start && cycle <= b.end ? '#ffd700' : '#fff')
+      .attr('font-size', '10px')
+      .text(b.name);
+  });
+
+  // Block bars
+  blocks.forEach((b, i) => {
+    const y = i * (barHeight + 4);
+    const x = xScale(b.start);
+    const w = xScale(b.end) - xScale(b.start);
+
+    const bar = svg.append('rect')
+      .attr('x', x)
+      .attr('y', y)
+      .attr('width', w)
+      .attr('height', barHeight)
+      .attr('rx', 3)
+      .attr('fill', b.color)
+      .attr('opacity', () => {
+        if (cycle >= b.start && cycle < b.end) return 0.9;
+        if (cycle >= b.start - 2 && cycle < b.end + 2) return 0.5;
+        return 0.25;
+      })
+      .attr('class', 'instr-bar')
+      .on('mouseover', (event) => {
+        const tooltip = d3.select('#tooltip');
+        tooltip.style('opacity', 1)
+          .html(`<b>${b.name}</b><br/>Cycle ${b.start}-${b.end} (${b.end - b.start}c)<br/>Port: ${b.color === '#4ecca3' ? 'P2/P3 (Load)' : b.color === '#e94560' ? 'P0/P1 (ALU)' : b.color === '#ffd700' ? 'P5 (Shuffle)' : b.color === '#a020f0' ? 'P0+P5 (Blend)' : b.color === '#00d4ff' ? 'P6 (Branch)' : 'P4 (Store)'}`)
+          .style('left', (event.pageX + 12) + 'px')
+          .style('top', (event.pageY - 28) + 'px');
+      })
+      .on('mouseout', () => d3.select('#tooltip').style('opacity', 0));
+
+    // Instruction count annotation
+    svg.append('text')
+      .attr('x', x + w + 4)
+      .attr('y', y + barHeight / 2 + 4)
+      .attr('fill', '#888')
+      .attr('font-size', '9px')
+      .text(getInstrCount(i) ? `${getInstrCount(i)} instr` : '');
+  });
+
+  // --- Port activity bar ---
+  const portSvg = d3.select('#ports-bar').html('<h2>Port Activity</h2>').append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', 60);
+
+  const portG = portSvg.append('g')
+    .attr('transform', `translate(${margin.left},10)`);
+
+  const portNames = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+  const pa = getPortActivity(cycle);
+
+  portNames.forEach((p, i) => {
+    const px = i * 80;
+    portG.append('rect')
+      .attr('x', px + 10)
+      .attr('y', 0)
+      .attr('width', 50)
+      .attr('height', 30)
+      .attr('rx', 4)
+      .attr('class', pa['p' + i] ? 'port-active' : 'port-box');
+
+    portG.append('text')
+      .attr('x', px + 35)
+      .attr('y', 20)
+      .attr('text-anchor', 'middle')
+      .attr('fill', pa['p' + i] ? '#fff' : '#666')
+      .attr('font-size', '11px')
+      .attr('font-weight', pa['p' + i] ? 'bold' : 'normal')
+      .text(p);
+  });
+
+  // --- uop issue width ---
+  const uopSvg = d3.select('#uops-bar').html('<h2>uOp Issue (4-wide decode)</h2>').append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', 40);
+
+  const uopG = uopSvg.append('g')
+    .attr('transform', `translate(${margin.left},5)`);
+
+  // Count active ports as uop count
+  const activePorts = Object.values(pa).filter(Boolean).length;
+  const uopWidth = Math.min(activePorts, 4);
+
+  for (let i = 0; i < 4; i++) {
+    uopG.append('rect')
+      .attr('x', i * 60 + 5)
+      .attr('y', 0)
+      .attr('width', 50)
+      .attr('height', 20)
+      .attr('rx', 3)
+      .attr('fill', i < uopWidth ? '#00d4ff' : '#333')
+      .attr('opacity', 0.6);
+
+    uopG.append('text')
+      .attr('x', i * 60 + 30)
+      .attr('y', 14)
+      .attr('text-anchor', 'middle')
+      .attr('fill', i < uopWidth ? '#000' : '#666')
+      .attr('font-size', '10px')
+      .text(i < uopWidth ? '✓' : '—');
+  }
+
+  uopG.append('text')
+    .attr('x', 250)
+    .attr('y', 14)
+    .attr('fill', '#888')
+    .attr('font-size', '10px')
+    .text(`${uopWidth}/4 uops issued this cycle`);
+
+  // --- Register state ---
+  const regSvg = d3.select('#registers').html('<h2>Register State (key XMM)</h2>').append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', 120);
+
+  const regG = regSvg.append('g')
+    .attr('transform', `translate(${margin.left},5)`);
+
+  const regs = [
+    { name: 'xmm2', desc: 'rdCostZ01' },
+    { name: 'xmm3', desc: 'rdCostZ23' },
+    { name: 'xmm5', desc: 'rdCostB01' },
+    { name: 'xmm6', desc: 'rdCostB23' },
+    { name: 'xmm7', desc: 'rdCostA01' },
+    { name: 'xmm8', desc: 'rdCostA23' },
+    { name: 'xmm9', desc: 'sig02 / rdBest01' },
+    { name: 'xmm10', desc: 'rdBest23' },
+    { name: 'xmm11', desc: 'valBest / absLevel' },
+    { name: 'xmm12', desc: 'idxBest / prevId' },
+    { name: 'xmm13', desc: 'sig13 / valCand' },
+    { name: 'xmm14/15', desc: 'chng / cff temp' },
+  ];
+
+  const cols = 4;
+  regs.forEach((r, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const rx = col * 280;
+    const ry = row * 35;
+
+    regG.append('text')
+      .attr('x', rx)
+      .attr('y', ry + 12)
+      .attr('class', 'reg-label')
+      .text(r.name);
+
+    regG.append('text')
+      .attr('x', rx + 80)
+      .attr('y', ry + 12)
+      .attr('class', 'reg-value')
+      .text(r.desc);
+  });
+}
+
+function play() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('play-btn').textContent = '⏸ Pause';
+  playInterval = setInterval(() => {
+    let next = currentCycle + 1;
+    if (next > totalCycles) {
+      next = 0;
+    }
+    render(next);
+  }, 250);
+}
+
+function pause() {
+  playing = false;
+  document.getElementById('play-btn').textContent = '▶ Play';
+  if (playInterval) clearInterval(playInterval);
+  playInterval = null;
+}
+
+function togglePlay() {
+  if (playing) pause();
+  else play();
+}
+
+function resetAnim() {
+  pause();
+  render(0);
+}
+
+window.jumpToKeyframe = function(idx) {
+  pause();
+  if (idx >= 0 && idx < keyframes.length) {
+    render(keyframes[idx].time);
+  }
+};
+
+window.resetAnimation = function() {
+  resetAnim();
+};
+
+window.getAnimationState = function() {
+  const kf = getCurrentKeyframe(currentCycle);
+  return {
+    cycle: currentCycle,
+    keyframeIdx: keyframes.indexOf(kf),
+    keyframeLabel: kf.label,
+    kfTotal: keyframes.length - 1,
+    description: kf.desc
+  };
+};
+
+d3.select('#play-btn').on('click', togglePlay);
+d3.select('#reset-btn').on('click', resetAnim);
+d3.select('#cycle-slider').on('input', function() {
+  pause();
+  render(+this.value);
+});
+
+render(0);
+})();
+</script>
+</body>
+</html>
