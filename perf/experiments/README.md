@@ -10,6 +10,7 @@
 | 2026-05-12 | `fix-dq-checkAllRdCosts-asm-minselect_2026-05-12/` | DQ `checkAllRdCosts` min-select blend mask bug fix and ASM implementation | **Archived** — ASM 0.93x vs C++ SIMD, within noise at encoder level. Memory-bound, not CPU-bound. | `dq-asm-minselect-debug-3` |
 | 2026-05-12 | `sad-avx2-port_2026-05-12/` | SAD AVX2 port for all 4 block sizes (8/16/32/64) | **Accepted** — 5-29% speedup in microbench, wired into encoder dispatch. | `asm-optimizer` |
 | 2026-05-13 | `had-avx2-optimization_2026-05-13/` | HAD (SATD) 8x8 AVX2 + 16x16 AVX2 (archived) | **Accepted** (8x8, 1.07x), **Archived** (16x16, 0.69x) | `had-avx2-optimization-4` |
+| 2026-05-13 | `interp-filterHor-vert_2026-05-13/` | interp filterHor (horizontal 8-tap luma) and filterVer (vertical 8-tap luma) AVX2 NASM | **Archived** — filterHor 0.935x (bit-exact, below threshold), filterVer not bit-exact | `had-avx2-optimization-4` |
 
 ## Metrics Legend
 
