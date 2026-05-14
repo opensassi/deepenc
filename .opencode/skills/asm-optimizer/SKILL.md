@@ -128,11 +128,23 @@ Compare the ASM implementation against the C++ spec baseline:
 
 2. **Compare instruction count per functional block**: rdCost setup, sigBits, cffBits, spt dispatch, min-select, store/epilogue.
 
-3. **Identify structural differences**:
+3. **Identify structural differences**, prioritized by estimated impact:
+
+   **Critical (5+ uops, 3+ cycles)**:
+   - Loop structure / block count vs C++ reference
+   - Different algorithm or data flow
+
+   **High (3-5 uops, 1-3 cycles)**:
    - Is the compiler using LEA chains instead of IMUL? (e.g., `ctx*3` then `*8` = ×24)
    - Are memory-folded vpinsrd/vpinsrq used instead of separate `mov`+`vpinsrd`?
-   - Is register scheduling different (pop interleaved with vector compute)?
    - Are address computations precomputed or re-computed per load?
+
+   **Medium (1-3 uops, <1 cycle)**:
+   - Is register scheduling different?
+   - Excess register spills (temporary stores to stack)
+
+   **Low (cosmetic only)**:
+   - Instruction selection differences (e.g., vpaddd vs vpaddw)
 
 4. **Rate each gap** on potential impact:
    - **Critical**: 5+ uops saved, 3+ cycles
@@ -163,9 +175,14 @@ Generate an implementation for one dispatch table entry, following the spec-firs
 3. **Propose a hypothesis**: For each identified gap, propose a specific ASM change. Create a mini-spec for the hypothesis explaining what it changes and why.
 4. **Write the ASM**: Write a NASM `.asm` file in `source/Lib/CommonLib/x86/`. Only use GAS inline asm in `.cpp` if NASM is unavailable. **NASM caveat**: All YMM instructions using ymm0–ymm7 require `{vex3}` prefix — without it, NASM silently emits VEX 2-byte (128-bit) encoding, zeroing the upper 128 bits. Verify with `objdump -d` (look for `c4` prefix = 256-bit, `c5` = 128-bit).
 5. **Register**: Add the `extern "C"` declaration in `asm-primitives.h` and the function pointer assignment in `asm-primitives.cpp::setupAssemblyPrimitives()`. NASM `.asm` files in `x86/` are auto-detected by CMake via glob — no manual CMake edits needed.
-6. **Validate**: Run bit-exact test (all 16+ test patterns must pass).
-7. **Benchmark**: Run `bench <entry>` against the C++ SIMD baseline.
-8. **Evaluate**: If the improvement is above the significance threshold, accept. If below, archive as experiment.
+6. **Validate struct offsets**: Before relying on struct field accesses in ASM code:
+   - Read the struct definition (header file), tracing through any base class inheritance
+   - Account for alignment and padding between fields
+   - Cross-validate each offset against any existing working ASM function that accesses the same fields
+   - When in doubt, verify with `offsetof(struct, field)` in a compile-time assertion or `(uintptr_t)&((struct*)0)->field`
+8. **Validate bit-exactness**: Run bit-exact test (all 16+ test patterns must pass).
+9. **Benchmark**: Run `bench <entry>` against the C++ SIMD baseline.
+10. **Evaluate**: If the improvement is above the significance threshold, accept. If below, archive as experiment.
 
 ### `iterative-optimize <entry> [--iter N]`
 
@@ -274,6 +291,55 @@ mem_load_uops_retired.l1_hit,mem_load_uops_retired.l1_miss,
 mem_load_uops_retired.l2_hit,mem_load_uops_retired.l2_miss,
 mem_load_uops_retired.llc_hit,mem_load_uops_retired.llc_miss
 ```
+
+## Debugging ASM Implementations
+
+When a new ASM implementation crashes, produces wrong results, or is slower than the C++ baseline, follow this methodology:
+
+### Crash Analysis (SEGFAULT)
+
+1. **Run under GDB**: `gdb --args <bin> <args>`
+2. **Get the faulting instruction** from the backtrace: which instruction causes the SEGV?
+3. **Identify the faulting operand**: e.g., `vpsubw (%rsi), %xmm0, %xmm0` → the crash reads from `[rsi]`. That register is your top priority.
+4. **Trace the faulting register backward**: where was it set? What struct field or calculation produced that value?
+5. **Check memory accessibility**: Use `x/8gx <address>` in GDB to confirm the address is mapped/unmapped.
+6. **Ignore other anomalous register values** until the faulting operand is fully explained. Non-causal anomalies are distractions.
+
+### Bit-Inexact or Wrong Results
+
+1. **Isolate the bug**: Temporarily disable the ASM registration (`#if 0` the function pointer assignment). Verify the test passes without your change — this proves the test infrastructure is sound.
+2. **Re-enable** and narrow down which input pattern fails.
+3. **Compare register state**: Use GDB breakpoints at equivalent points in the ASM and C++ code paths. Compare key register values.
+4. **Cross-validate struct offsets**: Compare your ASM's struct field accesses against a known-working ASM function that accesses the same fields (e.g., SAD functions for DistParam fields).
+
+### Performance Regression (ASM slower than C++)
+
+1. **Disassemble both** with `objdump -d` and compare instruction counts per functional block.
+2. **Check for missing optimizations**:
+   - Memory-folded operations (e.g., `vpaddd ymm0, ymm1, [mem]` instead of separate load+add)
+   - Excess register spills (temporary stores to stack)
+   - Loop structure differences (unrolling, alignment)
+3. **Use `#if 0` to binary-search** which block causes the regression. Disable blocks one at a time until performance matches C++.
+4. **Consider a fallback wrapper**: If ASM only accelerates a subset of calling contexts (e.g., specific block sizes), write a C++ wrapper that checks dimensions and delegates to C++ for unhandled cases:
+   ```
+   static FpDistFunc g_orig = nullptr;
+   static Distortion wrapper(const DistParam& dp) {
+     if (dp.org.width == 8 && dp.org.height == 8)
+       return asm_function(&dp);
+     return g_orig(dp);
+   }
+   ```
+   Save the original function pointer before replacing it.
+
+### Debug Signal Prioritization
+
+When investigating any ASM issue, prioritize signals in this order:
+1. **CRITICAL**: The faulting instruction's memory operand (crash) or the largest instruction count diff (performance)
+2. **HIGH**: Control flow structure (loop counts, block boundaries)
+3. **MEDIUM**: Register assignment and scheduling differences
+4. **LOW**: Cosmetic instruction selection differences
+
+Do NOT investigate all anomalies equally. Focus on the single most impactful signal until it is fully explained, then move to the next.
 
 ## Design Principles
 
