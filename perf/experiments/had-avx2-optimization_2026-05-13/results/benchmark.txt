@@ -1,0 +1,6 @@
+Benchmark results (laptop, taskset -c 0, 200000 iterations):
+Case      C++ (ns)        ASM (ns)        Speedup
+8x8       22.63           21.20           1.07x   (+7%)
+8x16      41.71           40.54           1.03x   (+3%)
+8x32      81.59           79.41           1.03x   (+3%)
+16x16     54.79           79.09           0.69x   (-31%) ← archived

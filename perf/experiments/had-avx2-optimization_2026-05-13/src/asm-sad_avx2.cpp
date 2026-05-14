@@ -198,17 +198,6 @@ asm(
 ".att_syntax prefix\n"
 );
 
-// C++ wrapper for DF_HAD8: delegates 8x8 blocks to AVX2, otherwise falls back.
-static FpDistFunc g_origHad8 = nullptr;
-static Distortion had8_avx2_wrapper(const DistParam& dp)
-{
-  if (dp.org.width == 8 && dp.org.height == 8)
-  {
-    return vvenc_had8_avx2(&dp);
-  }
-  return g_origHad8(dp);
-}
-
 // Override RdCost's dispatch table with hand-tuned ASM functions.
 // Called from RdCost::create() after initRdCostX86() installs SIMD versions.
 void applyRdCostAsmOverrides(RdCost& rdCost)
@@ -220,8 +209,7 @@ void applyRdCostAsmOverrides(RdCost& rdCost)
     rdCost.m_afpDistortFunc[0][DF_SAD16] = reinterpret_cast<FpDistFunc>(vvenc_sad16_avx2);
     rdCost.m_afpDistortFunc[0][DF_SAD32] = reinterpret_cast<FpDistFunc>(vvenc_sad32_avx2);
     rdCost.m_afpDistortFunc[0][DF_SAD64] = reinterpret_cast<FpDistFunc>(vvenc_sad64_avx2);
-    g_origHad8 = rdCost.m_afpDistortFunc[0][DF_HAD8];
-    rdCost.m_afpDistortFunc[0][DF_HAD8] = had8_avx2_wrapper;
+    rdCost.m_afpDistortFunc[0][DF_HAD8]  = reinterpret_cast<FpDistFunc>(vvenc_had8_avx2);
     memcpy(rdCost.m_afpDistortFunc[1], rdCost.m_afpDistortFunc[0], sizeof(FpDistFunc) * DF_TOTAL_FUNCTIONS);
   }
 }
