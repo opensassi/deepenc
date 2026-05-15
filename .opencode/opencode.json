@@ -15,6 +15,7 @@
     "daily-evaluation": "allow",
     "interp-vert-8tap-debug-5": "allow",
     "high-level-optimization-plan": "allow",
+    "hw-preanalysis-10": "allow",
     "note": "allow",
     "sad-asm-debug-8": "allow",
     "scheduler-phase-1-9": "allow"

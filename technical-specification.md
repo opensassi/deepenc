@@ -25,8 +25,9 @@ This specification covers the deepenc source fork only. The harness tooling (tra
 | vvencapp | `source/App/vvencapp/` | — | — | 1 file |
 | vvencFFapp | `source/App/vvencFFapp/` | `EncApp` | — | 2 files (EncApp, encmain) |
 | Scheduler | `source/Lib/Scheduler/` | `TUScheduler` | `Scheduler.spec.md` | 6 files (WorkUnit, RingBuffer, TUPipelineDAG, PictureDAG, TUScheduler, SchedulerTrace) |
+| HWPreAnalysis | `source/Lib/HWPreAnalysis/` | `HWPreAnalyzer` | `HWPreAnalyzer.spec.md` | 3 files (HWBitstreamParser, HWCuPartitionAnalyzer, HWPreAnalysisStage) |
 
-**Total: 86 internal spec files across 9 modules.**
+**Total: 89 internal spec files across 10 modules.**
 
 ## 2. Centralized Primitive Dispatch
 
