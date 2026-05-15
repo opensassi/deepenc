@@ -14,7 +14,9 @@
     "todo": "allow",
     "daily-evaluation": "allow",
     "interp-vert-8tap-debug-5": "allow",
-    "high-level-optimization-plan": "allow"
+    "high-level-optimization-plan": "allow",
+    "note": "allow",
+    "sad-asm-debug-8": "allow"
   },
   "mcp": {
     "playwright": {

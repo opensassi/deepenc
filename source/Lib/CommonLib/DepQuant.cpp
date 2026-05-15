@@ -1137,6 +1137,8 @@ void DepQuant::xQuantDQ( TransformUnit& tu, const CCoeffBuf& srcCoeff, const Com
   TCoeffSig*    qCoeff      = tu.getCoeffs( compID ).buf;
   const TCoeff* tCoeff      = srcCoeff.buf;
   const int     numCoeff    = tu.blocks[compID].area();
+  const int     trellisSc   = SizeClass::idx( std::max( ( int )tuPars.m_width, ( int )tuPars.m_height ) );
+  DQIntern::Decisions* trellis = m_trellis.ptr( trellisSc );
   ::memset( qCoeff, 0x00, numCoeff * sizeof( TCoeffSig ) );
   absSum                    = 0;
 
@@ -1231,10 +1233,10 @@ void DepQuant::xQuantDQ( TransformUnit& tu, const CCoeffBuf& srcCoeff, const Com
     if( enableScalingLists )
     {
       m_quant.initQuantBlock( tu, compID, cQP, lambda, quantCoeff[scanInfo.rasterPos] );
-      xDecideAndUpdate( abs( tCoeff[scanInfo.rasterPos] ), scanInfo, zeroOut && ( scanInfo.posX >= effWidth || scanInfo.posY >= effHeight ), quantCoeff[scanInfo.rasterPos] );
+      xDecideAndUpdate( abs( tCoeff[scanInfo.rasterPos] ), scanInfo, zeroOut && ( scanInfo.posX >= effWidth || scanInfo.posY >= effHeight ), quantCoeff[scanInfo.rasterPos], trellis );
     }
     else
-      xDecideAndUpdate( abs( tCoeff[scanInfo.rasterPos] ), scanInfo, zeroOut && ( scanInfo.posX >= effWidth || scanInfo.posY >= effHeight ), defaultQuantisationCoefficient );
+      xDecideAndUpdate( abs( tCoeff[scanInfo.rasterPos] ), scanInfo, zeroOut && ( scanInfo.posX >= effWidth || scanInfo.posY >= effHeight ), defaultQuantisationCoefficient, trellis );
   }
 
   //===== find best path =====
@@ -1242,7 +1244,7 @@ void DepQuant::xQuantDQ( TransformUnit& tu, const CCoeffBuf& srcCoeff, const Com
   int64_t   minPathCost =  0;
   for( int8_t stateId = 0; stateId < 4; stateId++ )
   {
-    int64_t pathCost = m_trellis[0][0].rdCost[stateId];
+    int64_t pathCost = trellis[0].rdCost[stateId];
     if( pathCost < minPathCost )
     {
       prevId      = stateId;
@@ -1254,11 +1256,11 @@ void DepQuant::xQuantDQ( TransformUnit& tu, const CCoeffBuf& srcCoeff, const Com
   int scanIdx = 0;
   for( ; prevId >= 0; scanIdx++ )
   {
-    TCoeffSig absLevel = m_trellis[scanIdx][prevId >> 2].absLevel[prevId & 3];
+    TCoeffSig absLevel = (trellis + scanIdx * 2)[prevId >> 2].absLevel[prevId & 3];
     int32_t blkpos     = tuPars.m_scanId2BlkPos[scanIdx].idx;
     qCoeff[ blkpos ]   = TCoeffSig( tCoeff[blkpos] < 0 ? -absLevel : absLevel );
     absSum            += absLevel;
-    prevId             = m_trellis[scanIdx][prevId >> 2].prevId[prevId & 3];
+    prevId             = (trellis + scanIdx * 2)[prevId >> 2].prevId[prevId & 3];
   }
 
   tu.lastPos[compID] = scanIdx - 1;
@@ -1386,11 +1388,11 @@ void DepQuant::xDecide( const DQIntern::ScanInfo& scanInfo, const TCoeff absCoef
   }
 }
 
-void DepQuant::xDecideAndUpdate( const TCoeff absCoeff, const DQIntern::ScanInfo& scanInfo, bool zeroOut, int quantCoeff )
+void DepQuant::xDecideAndUpdate( const TCoeff absCoeff, const DQIntern::ScanInfo& scanInfo, bool zeroOut, int quantCoeff, DQIntern::Decisions* trellis )
 {
   using namespace DQIntern;
 
-  Decisions* decisions = &m_trellis[scanInfo.scanIdx][0];
+  Decisions* decisions = trellis + scanInfo.scanIdx * 2;
 
   xDecide( scanInfo, absCoeff, lastOffset( scanInfo.scanIdx ), *decisions, zeroOut, quantCoeff );
 
@@ -1434,9 +1436,14 @@ DepQuant::DepQuant( const Quant* other, bool enc, bool useScalingLists, bool ena
     m_scansRom = dq->m_scansRom;
   }
 
-  for( int t = 0; t < ( MAX_TB_SIZEY * MAX_TB_SIZEY ); t++ )
+  for( int sc = 0; sc < 5; sc++ )
   {
-    memcpy( m_trellis[t], startDec, sizeof( startDec ) );
+    int nPos = SizeClass::area(sc);
+    DQIntern::Decisions* trellSc = m_trellis.ptr(sc);
+    for( int t = 0; t < nPos; t++ )
+    {
+      memcpy( trellSc + t * 2, startDec, sizeof( startDec ) );
+    }
   }
 
   m_checkAllRdCosts     = DQIntern::checkAllRdCosts;

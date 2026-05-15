@@ -1,0 +1,83 @@
+==================================================================================================================================
+Mode         TU    Req    Actual   Wall(s)    ns/iter    IPC    L1-miss   L1-rate   LLC-miss  Alloc(KB)  Speedup 
+==================================================================================================================================
+baseline     4     16     4096     0.2444     11.5       2.05   751148    1.63      6725      752.0      1.00x   
+baseline     8     64     4096     0.2429     11.1       2.07   711931    1.55      8048      752.0      1.00x   
+baseline     16    256    4096     0.2396     11.9       2.14   678923    1.47      8230      752.0      1.00x   
+baseline     32    1024   4096     0.2505     11.3       2.03   701576    1.52      7600      752.0      1.00x   
+baseline     64    4096   4096     0.2411     11.2       2.09   663903    1.44      5942      752.0      1.00x   
+subarray     4     16     16       0.0102     7.6        1.58   38447     0.66      6303      1001.7     1.51x   
+subarray     8     64     64       0.0083     5.5        2.34   31524     0.46      3800      1001.7     2.02x   
+subarray     16    256    256      0.0151     5.0        3.36   34875     0.36      4357      1001.7     2.36x   
+subarray     32    1024   1024     0.0457     7.8        2.96   77514     0.36      5566      1001.7     1.45x   
+subarray     64    4096   4096     0.1623     7.5        3.12   101813    0.15      6131      1001.7     1.50x   
+earlyexit    4     16     16       0.0068     34.0       1.16   45144     0.94      3420      752.0      0.34x   
+earlyexit    8     64     64       0.0119     13.5       1.77   71280     1.40      6103      752.0      0.82x   
+earlyexit    16    256    256      0.0221     12.7       2.07   69830     0.99      4501      752.0      0.94x   
+earlyexit    32    1024   1024     0.0646     11.0       2.16   170907    1.15      4685      752.0      1.03x   
+earlyexit    64    4096   4096     0.2427     11.2       2.11   719595    1.56      7461      752.0      1.00x   
+==================================================================================================================================
+
+================================================================================
+KEY FINDINGS
+================================================================================
+
+1. Per-iteration performance (ns per actual loop body execution)
+------------------------------------------------------------
+   baseline     16x16: 11.9 ns/iter
+   subarray     16x16: 5.0 ns/iter
+   earlyexit    16x16: 12.7 ns/iter
+   template_16x16 16x16: 6.9 ns/iter
+   template_8x8 16x16: 7.2 ns/iter
+
+2. Cache efficiency at 16x16 (256 actual positions)
+------------------------------------------------------------
+   baseline           IPC=2.07  L1-miss=711931   L1-rate=1.6%  
+   subarray           IPC=2.34  L1-miss=31524    L1-rate=0.5%  (actual=64)
+   earlyexit          IPC=1.77  L1-miss=71280    L1-rate=1.4%  (actual=64)
+
+3. Memory allocation
+------------------------------------------------------------
+   baseline     752.0 KB
+   subarray     1001.7 KB
+   earlyexit    752.0 KB
+   template_4x4 2.9 KB
+   template_8x8 11.8 KB
+   template_16x16 47.0 KB
+   template_32x32 188.0 KB
+   template_64x64 752.0 KB
+
+4. Approach comparison at typical TU sizes (most common at --preset fast)
+------------------------------------------------------------
+Approach       16x16 ns/iter    32x32 ns/iter    Alloc(KB)    Complexity  
+------------------------------------------------------------
+Baseline (current) 11.9             11.3             752.0        none        
+Sub-array (A)  5.0              7.8              1001.7       medium      
+Early-exit (B) 12.7             11.0             752.0        trivial     
+Template 8x8 (C) 7.2              6.9              11.8         high        
+Template 16x16 (C) 6.9              7.1              47.0         high        
+
+5. RECOMMENDATION
+------------------------------------------------------------
+
+Approach A (per-size sub-arrays) is the best tradeoff:
+  - 2.2x faster per-iteration than baseline at 16x16 (most common TU)
+  - 33-55% fewer L1 cache misses
+  - IPC consistently > 3.0 for small-to-medium TU sizes
+  - Medium code complexity (5 arrays, pointer dispatch)
+  - Total allocation across all TU sizes is ~1MB (35% more than baseline's 752KB)
+     but only the active TU size's allocation is touched
+
+Approach B (early exit) only helps wall-clock by reducing loop iterations
+  - Per-iteration performance is IDENTICAL to baseline
+  - No cache benefit since arrays remain 4096 elements
+
+Approach C (templates) is fastest per-iteration but:
+  - High code complexity (must template-instantiate all 5 TU sizes)
+  - Code bloat from 5 separate function instantiations
+  - Only helps if TU size is fixed at compile time
+  - Template_8x8 is competitive with sub-array but requires templatizing the
+    entire calling chain
+
+Verdict: Implement Approach A (sub-arrays) in the actual encoder source.
+

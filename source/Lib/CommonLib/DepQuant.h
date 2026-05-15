@@ -357,7 +357,7 @@ public:
 private:
   void    xQuantDQ          ( TransformUnit& tu, const CCoeffBuf& srcCoeff, const ComponentID compID, const QpParam& cQP, const double lambda, const Ctx& ctx, TCoeff& absSum, bool enableScalingLists, int* quantCoeff );
   void    xDequantDQ        ( const TransformUnit& tu, CoeffBuf& recCoeff, const ComponentID compID, const QpParam& cQP, bool enableScalingLists, int* quantCoeff );
-  void    xDecideAndUpdate  ( const TCoeff absCoeff, const DQIntern::ScanInfo& scanInfo, bool zeroOut, int quantCoeff);
+  void    xDecideAndUpdate  ( const TCoeff absCoeff, const DQIntern::ScanInfo& scanInfo, bool zeroOut, int quantCoeff, DQIntern::Decisions* trellis );
   void    xDecide           ( const DQIntern::ScanInfo &scanInfo, const TCoeff absCoeff, const int lastOffset, DQIntern::Decisions &decisions, bool zeroOut, int quantCoeff );
 
   DQIntern::CommonCtx m_commonCtx;
@@ -365,7 +365,7 @@ private:
                       m_scansRom;
   DQIntern::Quantizer m_quant;
 
-  DQIntern::Decisions m_trellis[MAX_TB_SIZEY * MAX_TB_SIZEY][2];
+  SizedBuf2<DQIntern::Decisions, 2> m_trellis;
   DQIntern::StateMem  m_state_curr;
   DQIntern::StateMem  m_state_skip;
 

@@ -475,7 +475,8 @@ static inline cost_t _dist( cost_t iErr, cost_t iErrScale, int64_t iErrScaleShif
 template< bool bSBH, bool bUseScalingList >
 int QuantRDOQ2::xRateDistOptQuantFast( TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx &ctx )
 {
-  CoeffCodingContext cctx( tu, compID, bSBH, false, m_tplBuf );
+  int sc = SizeClass::idx(( int )tu.blocks[compID].width);
+  CoeffCodingContext cctx( tu, compID, bSBH, false, m_tplBuf.ptr(sc) );
   const FracBitsAccess& fracBits = ctx.getFracBitsAcess();
 
   const SPS &sps            = *tu.cs->sps;

@@ -540,21 +540,22 @@ void QuantRDOQ::xRateDistOptQuant(TransformUnit& tu, const ComponentID compID, c
   const TCoeff    *plSrcCoeff = pSrc.buf;
         TCoeffSig *piDstCoeff = tu.getCoeffs(compID).buf;
 
-  double *pdCostCoeff  = m_pdCostCoeff;
-  double *pdCostSig    = m_pdCostSig;
-  double *pdCostCoeff0 = m_pdCostCoeff0;
-  int    *rateIncUp    = m_rateIncUp;
-  int    *rateIncDown  = m_rateIncDown;
-  int    *sigRateDelta = m_sigRateDelta;
-  TCoeff *deltaU       = m_deltaU;
+  const int sc = SizeClass::idx(( int )uiWidth);
+  double *pdCostCoeff  = m_pdCostCoeff.ptr(sc);
+  double *pdCostSig    = m_pdCostSig.ptr(sc);
+  double *pdCostCoeff0 = m_pdCostCoeff0.ptr(sc);
+  int    *rateIncUp    = m_rateIncUp.ptr(sc);
+  int    *rateIncDown  = m_rateIncDown.ptr(sc);
+  int    *sigRateDelta = m_sigRateDelta.ptr(sc);
+  TCoeff *deltaU       = m_deltaU.ptr(sc);
 
   memset( piDstCoeff,     0, sizeof( TCoeffSig ) * uiMaxNumCoeff );
-  memset( m_pdCostCoeff,  0, sizeof( double ) *  uiMaxNumCoeff );
-  memset( m_pdCostSig,    0, sizeof( double ) *  uiMaxNumCoeff );
-  memset( m_rateIncUp,    0, sizeof( int    ) *  uiMaxNumCoeff );
-  memset( m_rateIncDown,  0, sizeof( int    ) *  uiMaxNumCoeff );
-  memset( m_sigRateDelta, 0, sizeof( int    ) *  uiMaxNumCoeff );
-  memset( m_deltaU,       0, sizeof( TCoeff ) *  uiMaxNumCoeff );
+  memset( pdCostCoeff,    0, sizeof( double ) *  uiMaxNumCoeff );
+  memset( pdCostSig,      0, sizeof( double ) *  uiMaxNumCoeff );
+  memset( rateIncUp,      0, sizeof( int    ) *  uiMaxNumCoeff );
+  memset( rateIncDown,    0, sizeof( int    ) *  uiMaxNumCoeff );
+  memset( sigRateDelta,   0, sizeof( int    ) *  uiMaxNumCoeff );
+  memset( deltaU,         0, sizeof( TCoeff ) *  uiMaxNumCoeff );
 
 
   const bool   needSqrtAdjustment = TU::needsSqrt2Scale( tu, compID );
@@ -582,7 +583,7 @@ void QuantRDOQ::xRateDistOptQuant(TransformUnit& tu, const ComponentID compID, c
   int remRegBins          = (tu.getTbAreaAfterCoefZeroOut( compID ) * ctxBinSampleRatio) >> 4;
   uint32_t  goRiceParam   = 0;
 
-  double *pdCostCoeffGroupSig = m_pdCostCoeffGroupSig;
+  double *pdCostCoeffGroupSig = m_pdCostCoeffGroupSig.ptr(sc);
   memset( pdCostCoeffGroupSig, 0, ( uiMaxNumCoeff >> cctx.log2CGSize() ) * sizeof( double ) );
   int iScanPos;
   coeffGroupRDStats rdStats;
@@ -1146,12 +1147,13 @@ void QuantRDOQ::rateDistOptQuantTS( TransformUnit& tu, const ComponentID compID,
   const TCoeff    *srcCoeff = coeffs.buf;
         TCoeffSig *dstCoeff = tu.getCoeffs( compID ).buf;
 
-  double *costCoeff  = m_pdCostCoeff;
-  double *costSig    = m_pdCostSig;
-  double *costCoeff0 = m_pdCostCoeff0;
+  const int sc = SizeClass::idx(( int )width);
+  double *costCoeff  = m_pdCostCoeff.ptr(sc);
+  double *costSig    = m_pdCostSig.ptr(sc);
+  double *costCoeff0 = m_pdCostCoeff0.ptr(sc);
 
-  memset( m_pdCostCoeff,  0, sizeof( double ) *  maxNumCoeff );
-  memset( m_pdCostSig,    0, sizeof( double ) *  maxNumCoeff );
+  memset( costCoeff,  0, sizeof( double ) *  maxNumCoeff );
+  memset( costSig,    0, sizeof( double ) *  maxNumCoeff );
 
   m_bdpcm = 0;
 
@@ -1171,7 +1173,7 @@ void QuantRDOQ::rateDistOptQuantTS( TransformUnit& tu, const ComponentID compID,
   double    baseCost    = 0;
   uint32_t  goRiceParam = 0;
 
-  double *costSigSubBlock = m_pdCostCoeffGroupSig;
+  double *costSigSubBlock = m_pdCostCoeffGroupSig.ptr(sc);
   memset( costSigSubBlock, 0, ( maxNumCoeff >> cctx.log2CGSize() ) * sizeof( double ) );
 
   const int sbNum = width * height >> cctx.log2CGSize();
@@ -1361,13 +1363,15 @@ void QuantRDOQ::forwardRDPCM( TransformUnit& tu, const ComponentID compID, const
   const TCoeff    *srcCoeff = coeffs.buf;
         TCoeffSig *dstCoeff = tu.getCoeffs(compID).buf;
 
-  double *costCoeff = m_pdCostCoeff;
-  double *costSig = m_pdCostSig;
-  double *costCoeff0 = m_pdCostCoeff0;
+  const int sc = SizeClass::idx(( int )width);
+  double *costCoeff = m_pdCostCoeff.ptr(sc);
+  double *costSig = m_pdCostSig.ptr(sc);
+  double *costCoeff0 = m_pdCostCoeff0.ptr(sc);
 
-  memset(m_pdCostCoeff, 0, sizeof(double) *  maxNumCoeff);
-  memset(m_pdCostSig, 0, sizeof(double) *  maxNumCoeff);
-  memset(m_fullCoeff, 0, sizeof(TCoeff) * maxNumCoeff);
+  TCoeff* fullCoeff = m_fullCoeff.ptr(sc);
+  memset(costCoeff, 0, sizeof(double) *  maxNumCoeff);
+  memset(costSig, 0, sizeof(double) *  maxNumCoeff);
+  memset(fullCoeff, 0, sizeof(TCoeff) * maxNumCoeff);
 
   m_bdpcm = dirMode;
 
@@ -1391,7 +1395,7 @@ void QuantRDOQ::forwardRDPCM( TransformUnit& tu, const ComponentID compID, const
   double    baseCost = 0;
   uint32_t  goRiceParam = 0;
 
-  double *costSigSubBlock = m_pdCostCoeffGroupSig;
+  double *costSigSubBlock = m_pdCostCoeffGroupSig.ptr(sc);
   memset(costSigSubBlock, 0, (maxNumCoeff >> cctx.log2CGSize()) * sizeof(double));
 
   const int sbNum = width * height >> cctx.log2CGSize();
@@ -1423,7 +1427,7 @@ void QuantRDOQ::forwardRDPCM( TransformUnit& tu, const ComponentID compID, const
       const int posY = cctx.posY(scanPos);
       const int posS = (1 == dirMode) ? posX : posY;
       const int posNb = (1 == dirMode) ? (posX - 1) + posY * coeffs.stride : posX + (posY - 1) * coeffs.stride;
-      TCoeff predCoeff = (0 != posS) ? m_fullCoeff[posNb] : 0;
+      TCoeff predCoeff = (0 != posS) ? fullCoeff[posNb] : 0;
 
       // set coeff
       const int64_t          tmpLevel = int64_t(abs(srcCoeff[blkPos] - predCoeff)) * quantisationCoefficient;
@@ -1483,8 +1487,8 @@ void QuantRDOQ::forwardRDPCM( TransformUnit& tu, const ComponentID compID, const
         dstCoeff[blkPos] = -dstCoeff[blkPos];
       }
 
-      xDequantSample( m_fullCoeff[blkPos], dstCoeff[blkPos], trQuantParams );
-      m_fullCoeff[blkPos] += predCoeff;
+      xDequantSample( fullCoeff[blkPos], dstCoeff[blkPos], trQuantParams );
+      fullCoeff[blkPos] += predCoeff;
 
       baseCost += costCoeff[scanPos];
       rdStats.d64SigCost += costSig[scanPos];
@@ -1535,7 +1539,7 @@ void QuantRDOQ::forwardRDPCM( TransformUnit& tu, const ComponentID compID, const
           const int posY = cctx.posY(scanPos);
           const int posS = (1 == dirMode) ? posX : posY;
           const int posNb = (1 == dirMode) ? (posX - 1) + posY * coeffs.stride : posX + (posY - 1) * coeffs.stride;
-          m_fullCoeff[scanPos] = (0 != posS) ? m_fullCoeff[posNb] : 0;
+          fullCoeff[scanPos] = (0 != posS) ? fullCoeff[posNb] : 0;
 
           if (dstCoeff[blkPos])
           {

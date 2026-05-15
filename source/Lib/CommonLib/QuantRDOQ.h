@@ -57,6 +57,57 @@ POSSIBILITY OF SUCH DAMAGE.
 namespace vvenc {
 
 // ====================================================================================================================
+// Size class helpers — per-size sub-arrays for cache efficiency
+// ====================================================================================================================
+
+template<typename T, int A0 = 16, int A1 = 64, int A2 = 256, int A3 = 1024, int A4 = 4096>
+struct SizedBuf
+{
+  T m_data[A0 + A1 + A2 + A3 + A4];
+
+  T* ptr(int scIdx) const
+  {
+    static const int offs[5] = { 0, A0, A0 + A1, A0 + A1 + A2, A0 + A1 + A2 + A3 };
+    return const_cast<T*>(m_data + offs[scIdx]);
+  }
+  int area(int scIdx) const
+  {
+    static const int areas[5] = { A0, A1, A2, A3, A4 };
+    return areas[scIdx];
+  }
+};
+
+template<typename T, int N2 = 1>
+struct SizedBuf2
+{
+  T m_data[(16 + 64 + 256 + 1024 + 4096) * N2];
+
+  T* ptr(int scIdx) const
+  {
+    static const int offs[5] = { 0, 16 * N2, (16 + 64) * N2, (16 + 64 + 256) * N2, (16 + 64 + 256 + 1024) * N2 };
+    return const_cast<T*>(m_data + offs[scIdx]);
+  }
+  int area(int scIdx) const
+  {
+    static const int areas[5] = { 16 * N2, 64 * N2, 256 * N2, 1024 * N2, 4096 * N2 };
+    return areas[scIdx];
+  }
+};
+
+struct SizeClass
+{
+  static int idx(int dim)
+  {
+    return dim <= 4 ? 0 : dim <= 8 ? 1 : dim <= 16 ? 2 : dim <= 32 ? 3 : 4;
+  }
+  static int area(int scIdx)
+  {
+    static const int sAreas[5] = { 16, 64, 256, 1024, 4096 };
+    return sAreas[scIdx];
+  }
+};
+
+// ====================================================================================================================
 // Class definition
 // ====================================================================================================================
 
@@ -157,16 +208,16 @@ private:
 
   double* m_errScale              [SCALING_LIST_SIZE_NUM][SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
   double  m_errScaleNoScalingList [SCALING_LIST_SIZE_NUM][SCALING_LIST_SIZE_NUM][SCALING_LIST_NUM][SCALING_LIST_REM_NUM]; ///< array of quantization matrix coefficient 4x4
-  // temporary buffers for RDOQ
-  double  m_pdCostCoeff           [MAX_TB_SIZEY * MAX_TB_SIZEY];
-  double  m_pdCostSig             [MAX_TB_SIZEY * MAX_TB_SIZEY];
-  double  m_pdCostCoeff0          [MAX_TB_SIZEY * MAX_TB_SIZEY];
-  double  m_pdCostCoeffGroupSig   [(MAX_TB_SIZEY * MAX_TB_SIZEY) >> MLS_CG_SIZE]; // even if CG size is 2 (if one of the sides is 2) instead of 4, there should be enough space
-  int     m_rateIncUp             [MAX_TB_SIZEY * MAX_TB_SIZEY];
-  int     m_rateIncDown           [MAX_TB_SIZEY * MAX_TB_SIZEY];
-  int     m_sigRateDelta          [MAX_TB_SIZEY * MAX_TB_SIZEY];
-  TCoeff  m_deltaU                [MAX_TB_SIZEY * MAX_TB_SIZEY];
-  TCoeff  m_fullCoeff             [MAX_TB_SIZEY * MAX_TB_SIZEY];
+  // temporary buffers for RDOQ — per-size sub-arrays for cache efficiency
+  SizedBuf<double>                m_pdCostCoeff;
+  SizedBuf<double>                m_pdCostSig;
+  SizedBuf<double>                m_pdCostCoeff0;
+  SizedBuf<double,1,4,16,64,256> m_pdCostCoeffGroupSig;
+  SizedBuf<int>                   m_rateIncUp;
+  SizedBuf<int>                   m_rateIncDown;
+  SizedBuf<int>                   m_sigRateDelta;
+  SizedBuf<TCoeff>                m_deltaU;
+  SizedBuf<TCoeff>                m_fullCoeff;
   int     m_bdpcm;
   int     m_testedLevels;
 };// END CLASS DEFINITION QuantRDOQ

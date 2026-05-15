@@ -18,6 +18,8 @@ deploy
 node_modules/
 .artifacts/
 src/**/.artifacts/
+notes.md
+notes.tmp
 .playwright-mcp/
 test/data/park_joy_*.yuv
 .profiler/

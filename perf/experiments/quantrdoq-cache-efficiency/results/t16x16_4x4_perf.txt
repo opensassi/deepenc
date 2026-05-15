@@ -1,0 +1,35 @@
+microbench: tu_size=4 iterations=3000 mode=t16x16
+
+ Performance counter stats for 'taskset -c 0 /home/pc/projects/deepenc/perf/experiments/quantrdoq-cache-efficiency/build/microbench --mode t16x16 --tu-size 4 --iterations 3000':
+
+         5,830,982      cpu_atom/cycles/u                                                       (1.93%)
+        18,454,603      cpu_core/cycles/u                                                       (46.89%)
+         4,481,164      cpu_atom/instructions/u          #    0.77  insn per cycle              (4.97%)
+        62,066,862      cpu_core/instructions/u          #    3.36  insn per cycle              (56.51%)
+         1,086,484      cpu_atom/L1-dcache-loads/u                                              (4.97%)
+         2,491,585      cpu_core/L1-dcache-loads/u                                              (66.14%)
+   <not supported>      cpu_atom/L1-dcache-load-misses/u                                      
+            22,975      cpu_core/L1-dcache-load-misses/u #    0.92% of all L1-dcache accesses   (75.75%)
+            10,155      cpu_atom/LLC-loads/u                                                    (4.97%)
+             2,331      cpu_core/LLC-loads/u                                                    (75.75%)
+                 0      cpu_atom/LLC-load-misses/u                                              (4.97%)
+             1,537      cpu_core/LLC-load-misses/u       #   65.94% of all LL-cache accesses    (75.76%)
+     <not counted>      cpu_atom/LLC-stores/u                                                   (0.00%)
+                 5      cpu_core/LLC-stores/u                                                   (19.28%)
+     <not counted>      cpu_atom/LLC-store-misses/u                                             (0.00%)
+                 0      cpu_core/LLC-store-misses/u                                             (19.27%)
+     <not counted>      cpu_atom/cache-misses/u                                                 (0.00%)
+               304      cpu_core/cache-misses/u          #   19.01% of all cache refs           (28.90%)
+     <not counted>      cpu_atom/cache-references/u                                             (0.00%)
+             1,599      cpu_core/cache-references/u                                             (36.76%)
+   <not supported>      cpu_atom/stalled-cycles-frontend/u                                      
+   <not supported>      cpu_core/stalled-cycles-frontend/u                                      
+   <not supported>      cpu_atom/stalled-cycles-backend/u                                      
+   <not supported>      cpu_core/stalled-cycles-backend/u                                      
+
+       0.011387934 seconds time elapsed
+
+       0.010124000 seconds user
+       0.001012000 seconds sys
+
+
