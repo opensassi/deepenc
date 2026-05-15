@@ -1,0 +1,296 @@
+{
+  "date": "2026-05-15",
+  "total_prompter_time_hours": 7.7,
+  "total_sme_time_hours": 178,
+  "ai_multiplier": 23.1,
+  "total_sessions": 3,
+  "top_subject_areas": [
+    {
+      "name": "VVenC",
+      "prompter_time_hours": 0.43,
+      "sme_time_hours": 12.21,
+      "ai_multiplier": 28.4
+    },
+    {
+      "name": "scheduler",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "work-unit",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "DAG",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "wavefront",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "parallelism",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "VVC",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "encoder",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "spec",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "system-design",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "architecture",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "C++14",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "D3",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "Mermaid",
+      "prompter_time_hours": 0.32,
+      "sme_time_hours": 8.57,
+      "ai_multiplier": 26.7
+    },
+    {
+      "name": "hw-preanalysis",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "vvc-h266",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "intel-quicksync",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "encoder-architecture",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "hardware-accelerated-encoding",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "cu-partition-analysis",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "technical-specification",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "mermaid-diagrams",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "vvenc-fork",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "pipeline-design",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "bitstream-parsing",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "pre-analysis-module",
+      "prompter_time_hours": 0.17,
+      "sme_time_hours": 1.5,
+      "ai_multiplier": 9
+    },
+    {
+      "name": "quantization",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "cache-efficiency",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "sub-array",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "RDOQ",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "DepQuant",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "SIMD",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "perf",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "microbenchmark",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "LLVM",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    },
+    {
+      "name": "encoder optimization",
+      "prompter_time_hours": 0.11,
+      "sme_time_hours": 3.64,
+      "ai_multiplier": 33.3
+    }
+  ],
+  "session_breakdown": [
+    {
+      "session_id": "2026-05-15-scheduler-spec-and-skill",
+      "duration_minutes": 270,
+      "prompter_time_minutes": 270,
+      "sme_time_minutes": 7200,
+      "top_component_summary": "Scheduler module technical specification (7 .spec.md files + 1 tool spec) with 14 validated artifacts (10 Mermaid diagrams, 4 D3 animations).",
+      "tags": [
+        "scheduler",
+        "work-unit",
+        "DAG",
+        "wavefront",
+        "parallelism",
+        "VVenC",
+        "VVC",
+        "encoder",
+        "spec",
+        "system-design",
+        "architecture",
+        "C++14",
+        "D3",
+        "Mermaid"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-15-hw-preanalysis-spec",
+      "duration_minutes": 120,
+      "prompter_time_minutes": 120,
+      "sme_time_minutes": 1080,
+      "top_component_summary": "HWPreAnalyzer QuickSync Pre-Analysis Module — full technical specification across 4 spec files + root technical-specification.md module table update.",
+      "tags": [
+        "hw-preanalysis",
+        "vvc-h266",
+        "intel-quicksync",
+        "encoder-architecture",
+        "hardware-accelerated-encoding",
+        "cu-partition-analysis",
+        "technical-specification",
+        "mermaid-diagrams",
+        "vvenc-fork",
+        "pipeline-design",
+        "bitstream-parsing",
+        "pre-analysis-module"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-15-sub-array-cache-optimization",
+      "duration_minutes": 72,
+      "prompter_time_minutes": 72,
+      "sme_time_minutes": 2400,
+      "top_component_summary": "Per-size sub-array cache optimization for QuantRDOQ/DepQuant member arrays — replacing monolithic MAX_TB_SIZEY² arrays with 5 packed sub-arrays per size class (4×4, 8×8, 16×16, 32×32, 64×64), with pointer dispatch at the hot-loop entry point.",
+      "tags": [
+        "quantization",
+        "cache-efficiency",
+        "sub-array",
+        "RDOQ",
+        "DepQuant",
+        "SIMD",
+        "perf",
+        "microbenchmark",
+        "VVenC",
+        "LLVM",
+        "encoder optimization"
+      ],
+      "human_confidence": "high"
+    }
+  ],
+  "audited": true,
+  "audit_note": "[2026-05-15-scheduler-spec-and-skill] Prompter time capped from 6.3h to 4.5h (exceeded active duration)"
+}

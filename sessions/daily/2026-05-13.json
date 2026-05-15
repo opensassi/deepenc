@@ -1,0 +1,193 @@
+{
+  "date": "2026-05-13",
+  "total_prompter_time_hours": 5,
+  "total_sme_time_hours": 56,
+  "ai_multiplier": 11.2,
+  "total_sessions": 2,
+  "top_subject_areas": [
+    {
+      "name": "AVX2",
+      "prompter_time_hours": 0.42,
+      "sme_time_hours": 4.67,
+      "ai_multiplier": 11.2
+    },
+    {
+      "name": "NASM",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "VEX",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "interpolation-filter",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "x86-optimization",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "install-scripts",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "ubuntu",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "macos",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "windows",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "wsl2",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "build-infrastructure",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "session-evaluation",
+      "prompter_time_hours": 0.29,
+      "sme_time_hours": 2.67,
+      "ai_multiplier": 9.1
+    },
+    {
+      "name": "SATD",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "HAD",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "assembly optimization",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "VVenC",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "VVC",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "encoder",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "performance",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "SIMD",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "inline-asm",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "skill-specification",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    },
+    {
+      "name": "high-level-optimization",
+      "prompter_time_hours": 0.13,
+      "sme_time_hours": 2,
+      "ai_multiplier": 16
+    }
+  ],
+  "session_breakdown": [
+    {
+      "session_id": "2026-05-13-install-scripts-and-opt-archive",
+      "duration_minutes": 210,
+      "prompter_time_minutes": 210,
+      "sme_time_minutes": 1920,
+      "top_component_summary": "Platform install scripts for Ubuntu, macOS, and Windows (WSL2), plus experiment archiving for the interp-filterHor/vert optimization attempt.",
+      "tags": [
+        "AVX2",
+        "NASM",
+        "VEX",
+        "interpolation-filter",
+        "x86-optimization",
+        "install-scripts",
+        "ubuntu",
+        "macos",
+        "windows",
+        "wsl2",
+        "build-infrastructure",
+        "session-evaluation"
+      ],
+      "human_confidence": "high"
+    },
+    {
+      "session_id": "2026-05-13-had-avx2-optimization",
+      "duration_minutes": 90,
+      "prompter_time_minutes": 90,
+      "sme_time_minutes": 1440,
+      "top_component_summary": "HAD (SATD) 8x8 AVX2 kernel accepted and wired into encoder dispatch via fallback wrapper; HAD 16x16 AVX2 archived due to 0.69x regression from 4× function call overhead; high-level optimization plan skill specification created.",
+      "tags": [
+        "AVX2",
+        "SATD",
+        "HAD",
+        "assembly optimization",
+        "VVenC",
+        "VVC",
+        "encoder",
+        "performance",
+        "SIMD",
+        "inline-asm",
+        "skill-specification",
+        "high-level-optimization"
+      ],
+      "human_confidence": "high"
+    }
+  ]
+}
