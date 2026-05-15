@@ -2,11 +2,11 @@
 
 ## 1. Overview
 
-`TUScheduler` is the public facade of the Scheduler module. It receives `submitModeTrial()` calls from `IntraSearch` and `InterSearch`, builds the work-unit DAG via `TUPipelineDAG`, allocates intermediate storage via `RingBuffer`, and dispatches ready work units to `NoMallocThreadPool`.
+`TUScheduler` is the public facade of the Scheduler module. It receives `submitModeTrial()` calls from `IntraSearch` and `InterSearch` for per-CU mode decision, and `submitFrame()` calls from `EncSlice` for wavefront CTU dispatch. It builds the work-unit DAG via `TUPipelineDAG` or `PictureDAG`, allocates intermediate storage via `RingBuffer`, and dispatches ready work units to `NoMallocThreadPool`.
 
-**Dependencies**: `NoMallocThreadPool.h` (Utilities), `TUPipelineDAG.h`, `RingBuffer.h`, `WorkUnit.h`, `CodingStructure.h`, `Unit.h`.
+**Dependencies**: `NoMallocThreadPool.h` (Utilities), `TUPipelineDAG.h`, `PictureDAG.h`, `RingBuffer.h`, `WorkUnit.h`, `CodingStructure.h`, `Slice.h`, `Unit.h`.
 
-**Lifecycle**: `init()` allocates the work unit pool and ring buffer. Each call to `submitModeTrial()` is blocking — it returns only when the mode's entire DAG is complete. `destroy()` frees all resources.
+**Lifecycle**: `init()` allocates the work unit pool and ring buffer. `submitFrame()` returns immediately — the wavefront advances asynchronously; `advanceFrame()` polls for dispatch. `submitModeTrial()` blocks — it's used for in-CU mode decision and returns only when the CU's TU DAG is complete. `destroy()` frees all resources.
 
 ## 2. Component Specifications
 
@@ -19,7 +19,8 @@ enum class BatchPolicy : uint8_t
 {
     TU_SEQUENTIAL,     // dispatch one TU's full pipeline at a time
     STAGE_GLOBAL,      // dispatch same stage across all ready TUs
-    HYBRID             // auto-select per TU size class
+    HYBRID,            // auto-select per TU size class
+    WAVEFRONT          // picture-level wavefront anti-diagonal dispatch
 };
 
 }
@@ -38,6 +39,8 @@ namespace vvenc {
 class NoMallocThreadPool;
 class CodingUnit;
 class CodingStructure;
+class Slice;
+class Picture;
 class RingBuffer;
 struct WorkUnit;
 
@@ -69,6 +72,24 @@ public:
      */
     int submitModeTrial(CodingUnit* cu, ModeType mode,
                         CodingStructure* pTempCS, double& rdCost);
+
+    /** \brief Submit a frame's CTU wavefront for processing. Non-blocking.
+     *  Builds the PictureDAG and begins dispatching CTU_ENCODE stages.
+     *  \param[in] slice the slice to encode
+     *  \param[in] pic   the picture buffer
+     *  \retval 0 on success
+     *  \retval -1 if not initialized
+     *  \retval -2 if PictureDAG build fails
+     */
+    int submitFrame(Slice& slice, Picture* pic);
+
+    /** \brief Advance the wavefront dispatch loop.
+     *  Called from the encoder main loop. Dispatches newly-ready CTU stages.
+     *  \retval 0 if frame still in progress
+     *  \retval 1 if frame is complete
+     *  \retval -1 if no active frame
+     */
+    int advanceFrame();
 
     /** \brief Set the batching policy.
      *  \param[in] ePolicy the batching policy to use
@@ -112,11 +133,23 @@ private:
     /// Size of the work unit pool
     int                 m_poolSize        = 0;
 
+    /// Per-CTU wavefront state array (size = numCtuInPic)
+    std::atomic<int8_t>* m_pCtuStates     = nullptr;
+
+    /// Number of CTUs in the active frame
+    int                 m_numCtuInPic     = 0;
+
+    /// Number of CTU columns in the picture
+    int                 m_numCtuCols      = 0;
+
+    /// Whether a frame is currently being processed
+    bool                m_bFrameActive    = false;
+
     /// Batch window size in TUs
     int                 m_windowSize      = 8;
 
     /// Current batching policy
-    BatchPolicy         m_ePolicy         = BatchPolicy::STAGE_GLOBAL;
+    BatchPolicy         m_ePolicy         = BatchPolicy::WAVEFRONT;
 
     /// Whether init() has been called
     bool                m_bInitialized    = false;
@@ -129,6 +162,12 @@ private:
 
     /// Calculate required pool size for a given CU and mode
     int xCalcPoolSize(CodingUnit* cu, ModeType mode);
+
+    /// Calculate required pool size for a frame
+    int xCalcFramePoolSize(const Slice& slice);
+
+    /// Reset per-CTU wavefront state for a new frame
+    int xInitCtuStates(const Slice& slice);
 };
 
 }
@@ -139,37 +178,100 @@ private:
 ```mermaid
 graph TB
     subgraph TUScheduler_Internals["TUScheduler"]
-        API["submitModeTrial<br/>setPolicy / setWindowSize"]
+        MT_API["submitModeTrial<br/>blocking per-CU"]
+        F_API["submitFrame<br/>non-blocking per-frame"]
+        AF["advanceFrame<br/>poll wavefront"]
         PoolMgr["xSubmitReady<br/>dep-scan + dispatch"]
         CbMgr["xOnComplete<br/>dep decrement + cascade"]
-        SchedState["m_pPool / m_pRing / m_pWorkPool<br/>m_windowSize / m_ePolicy"]
+        SchedState["m_pPool / m_pRing / m_pWorkPool<br/>m_pCtuStates / m_numCtuInPic"]
     end
 
     subgraph Internal_Module["Internal Module Components"]
-        DAG["TUPipelineDAG<br/>build()"]
+        DAG["TUPipelineDAG<br/>per-mode-trial build()"]
+        PDAG["PictureDAG<br/>per-frame build()"]
         RB["RingBuffer<br/>alloc/free"]
-        WU["WorkUnit<br/>dep graph"]
+        WU["WorkUnit<br/>dep graph + spatial deps"]
         Scratch["Per-thread scratch<br/>trellis + RDOQ arrays"]
     end
 
     subgraph External["External"]
         TP["NoMallocThreadPool<br/>addBarrierTask"]
-        Caller["IntraSearch / InterSearch"]
+        CallerCU["IntraSearch / InterSearch<br/>xCompressCU"]
+        CallerFrame["EncSlice<br/>compressSlice"]
     end
 
-    Caller -->|submitModeTrial| API
-    API -->|build DAG| DAG
-    API -->|alloc slots| RB
-    API -->|calc pool| WU
+    CallerCU -->|submitModeTrial| MT_API
+    CallerFrame -->|submitFrame| F_API
+    CallerFrame -->|advanceFrame| AF
+    MT_API -->|build DAG| DAG
+    F_API -->|build wavefront DAG| PDAG
+    MT_API -->|alloc slots| RB
+    F_API -->|alloc slots| RB
+    MT_API -->|calc pool| WU
+    F_API -->|init ctu states| WU
     PoolMgr -->|addBarrierTask| TP
     TP -->|exec callback| CbMgr
     CbMgr -->|decrement deps| WU
     CbMgr -->|submit ready| PoolMgr
-    Scratch -->|shared| API
-    API -->|rdCost| Caller
+    CbMgr -->|advance pCtuStates| PDAG
+    Scratch -->|shared| MT_API
+    Scratch -->|shared| F_API
+    MT_API -->|rdCost| CallerCU
+    AF -->|frame status| CallerFrame
 ```
 
 ## 4. Detailed Data Flow
+
+### 4.1 Frame-level flow (submitFrame)
+
+```mermaid
+sequenceDiagram
+    participant EncSlice as EncSlice
+    participant Sched as TUScheduler
+    participant PDAG as PictureDAG
+    participant TP as ThreadPool
+    participant WUex as CTU WorkUnit exec
+    participant TUSched_inner as TUScheduler (internal)
+
+    EncSlice->>Sched: submitFrame(slice, pic)
+    activate Sched
+    Sched->>PDAG: build(slice, pic, pool, poolSize, numUnits, ctuStates)
+    activate PDAG
+    Note over PDAG: creates 11 WorkUnits per CTU<br/>with spatial dep edges
+    PDAG-->>Sched: WorkUnit[] + ctuStates[]
+    deactivate PDAG
+    Sched->>Sched: xInitCtuStates() -> all WF_NOT_READY
+
+    rect rgb(30, 40, 60)
+        Note over EncSlice,Sched: Wavefront dispatch loop
+        loop call each frame cycle
+            EncSlice->>Sched: advanceFrame()
+            activate Sched
+            Sched->>Sched: xSubmitReady()
+            Note over Sched: scan for CTU_ENCODE with<br/>depCount==0 AND spatial deps met
+
+            par for each ready CTU
+                Sched->>TP: addBarrierTask(execCtuEncode, wu)
+                TP->>WUex: execute CTU_ENCODE
+                activate WUex
+                Note over WUex: internally calls:<br/>xCompressCU(single CU)<br/>which calls submitModeTrial
+                WUex->>TUSched_inner: submitModeTrial(cu, mode, tempCS, cost)
+                TUSched_inner-->>WUex: cost, mode decision
+                Note over WUex: check best mode, recurse or select
+                WUex-->>TP: CTU complete
+                deactivate WUex
+                TP->>Sched: xOnComplete(wu)
+                Sched->>Sched: advance pCtuStates[rsAddr]
+                Note over Sched: neighbor CTUs' spatial deps<br/>may now be satisfied
+            end
+            Sched-->>EncSlice: return 0 (in progress) or 1 (done)
+            deactivate Sched
+        end
+    end
+    deactivate Sched
+```
+
+### 4.2 Mode-trial flow (submitModeTrial)
 
 ```mermaid
 sequenceDiagram
@@ -543,6 +645,10 @@ applyKeyframe(0);
 | `submit single TU` | Single TU x single component: 7 work units dispatched, correct stages, returns 0 |
 | `submit multi TU` | 4 TUs: STAGE_GLOBAL dispatches all stage-0 before any stage-1 |
 | `TU_SEQUENTIAL ordering` | With 3 TUs: all 7 stages of TU-0 complete before TU-1 stage 0 |
+| `submitFrame single CTU` | 11 CTU-level work units created, CTU(0,0).CTU_ENCODE has depCount=0 |
+| `submitFrame 4x4 grid` | 176 WorkUnits, wavefront begins at (0,0) |
+| `advanceFrame before submitFrame` | Returns -1 |
+| `advanceFrame empty wavefront` | Returns 1 (frame complete) when all CTUs done |
 | `setPolicy invalid` | Returns -1 for out-of-range enum value |
 | `setWindowSize zero` | Returns -1 |
 | `getPolicy after set` | Returns the policy set |
@@ -551,5 +657,6 @@ applyKeyframe(0);
 
 ### Integration
 
-- Bit-exactness: `Test_vvencapp_scheduler_bit` verifies byte-identical output vs baseline
-- For each batching policy: verify dispatch count equals expected total (numTU × numComponents × stagesPerComponent)
+- Bit-exactness: `Test_vvencapp_scheduler_bit` verifies byte-identical output vs baseline (mode-level path; frame-level wavefront is a behavioral change and not bit-exact)
+- For each batching policy: verify dispatch count equals expected total (numTU x numComponents x stagesPerComponent)
+- Frame-level: verify that each CTU's 11 stages dispatch in the correct order across the wavefront

@@ -2,7 +2,9 @@
 
 ## 1. Overview
 
-`TUPipelineDAG` walks the TU tree of a single CU+mode trial and produces a flat array of `WorkUnit` instances linked by dependency edges. Each WorkUnit represents one pipeline stage for one component of one TU. The DAG encodes the exact ordering constraints of the sequential pipeline: PREDICT must complete before RESIDUAL, RESIDUAL before FWD_XFORM, etc.
+`TUPipelineDAG` walks the TU tree of a single CU+mode trial within one CTU and produces a flat array of `WorkUnit` instances linked by dependency edges. Each WorkUnit represents one pipeline stage for one component of one TU. The DAG encodes the exact ordering constraints of the sequential pipeline: PREDICT must complete before RESIDUAL, RESIDUAL before FWD_XFORM, etc.
+
+This is the **intra-CTU, intra-mode-trial** DAG. For the **inter-CTU wavefront** DAG that spans an entire frame, see `PictureDAG.spec.md`.
 
 **Dependencies**: `WorkUnit.h`, `CodingStructure.h`, `Unit.h` (CodingUnit, TransformUnit structs).
 

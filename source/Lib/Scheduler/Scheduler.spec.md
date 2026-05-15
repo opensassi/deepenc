@@ -19,11 +19,12 @@ The Scheduler module decomposes the VVenC TU processing pipeline into a DAG of f
 
 | # | Spec File | Role |
 |---|-----------|------|
-| 1 | `TUScheduler.spec.md` | Dispatcher facade — submitModeTrial, batch policies, completion tracking |
-| 2 | `TUPipelineDAG.spec.md` | DAG builder — walks CU partition tree, creates linked WorkUnits with dependency edges |
-| 3 | `WorkUnit.spec.md` | Dispatchable unit — Stage enum, WorkUnit struct, WorkFunc typedef |
-| 4 | `RingBuffer.spec.md` | Intermediate buffer pool — slot-based alloc/free sized to window |
-| 5 | `SchedulerTrace.spec.md` | Trace capture — binary trace of stage metadata + root inputs for offline replay |
+| 1 | `TUScheduler.spec.md` | Dispatcher facade — submitModeTrial, submitFrame, advanceFrame, batch policies, completion tracking |
+| 2 | `TUPipelineDAG.spec.md` | DAG builder — walks CU partition tree within a mode trial, creates linked WorkUnits with intra-TU dependency edges |
+| 3 | `PictureDAG.spec.md` | Wavefront DAG builder — creates CTU-level WorkUnits for an entire frame with spatial dependency edges |
+| 4 | `WorkUnit.spec.md` | Dispatchable unit — Stage enum, WorkUnit struct (includes spatial CTU metadata), WorkFunc typedef |
+| 5 | `RingBuffer.spec.md` | Intermediate buffer pool — slot-based alloc/free sized to window |
+| 6 | `SchedulerTrace.spec.md` | Trace capture — binary trace of stage metadata + root inputs for offline replay |
 
 ## 3. System Architecture
 
@@ -37,9 +38,10 @@ graph TB
 
     subgraph Scheduler_Module["Scheduler Module (ENABLE_SCHEDULER_DISPATCH)"]
         TUSched["TUScheduler<br/>dispatcher facade"]
-        DAG["TUPipelineDAG<br/>DAG builder"]
+        DAG["TUPipelineDAG<br/>per-mode-trial build"]
+        PDAG["PictureDAG<br/>per-frame wavefront build"]
         RB["RingBuffer<br/>intermediate storage<br/>window_size x 16KB"]
-        WU["WorkUnit<br/>stage + dep graph"]
+        WU["WorkUnit<br/>stage + dep graph + spatial"]
         ST["SchedulerTrace<br/>capture layer"]
     end
 
@@ -55,11 +57,14 @@ graph TB
 
     IS -->|submitModeTrial| TUSched
     IES -->|submitModeTrial| TUSched
+    EC -->|submitFrame + advanceFrame| TUSched
     TUSched -->|build DAG from CU TUs| DAG
+    TUSched -->|build wavefront DAG| PDAG
     TUSched -->|alloc intermediate slots| RB
     TUSched -->|addBarrierTask| TP
     DAG -->|creates and links| WU
-    WU -->|dependency graph| TUSched
+    PDAG -->|creates spatial deps| WU
+    TUSched -->|init ctu states and wavefront deps| WU
     TUSched -.->|recordStage calls| ST
 
     SB -->|loads trace binary| TL
@@ -68,6 +73,7 @@ graph TB
 
     style TUSched fill:#4a90d9,color:#fff
     style DAG fill:#5ba3e6,color:#fff
+    style PDAG fill:#5ba3e6,color:#fff
     style RB fill:#7bb8f0,color:#000
     style WU fill:#7bb8f0,color:#000
     style ST fill:#7bb8f0,color:#000
@@ -78,6 +84,52 @@ graph TB
 ```
 
 ## 4. Detailed Data Flow
+
+### 4.1 Frame-level wavefront flow
+
+```mermaid
+sequenceDiagram
+    participant EncSlice as EncSlice
+    participant Sched as TUScheduler
+    participant PDAG as PictureDAG
+    participant RB as RingBuffer
+    participant TP as NoMallocThreadPool
+    participant Exec as CTU WorkUnit executor
+    participant Callback as xOnComplete
+
+    EncSlice->>Sched: submitFrame(slice, pic)
+    Sched->>PDAG: build(slice, pic, pool, poolSize, numUnits, ctuStates)
+    activate PDAG
+    Note over PDAG: 11 WorkUnits per CTU<br/>with spatial dep edges
+    PDAG-->>Sched: WorkUnit[] + ctuStates[]
+    deactivate PDAG
+
+    Sched->>RB: alloc(poolSize intermediate slots)
+    RB-->>Sched: slot pointers
+
+    loop each frame cycle
+        EncSlice->>Sched: advanceFrame()
+        Sched->>Sched: xSubmitReady()
+        Note over Sched: scan for CTU_ENCODE with<br/>depCount==0 + spatial deps met
+
+        par for each ready CTU
+            Sched->>TP: addBarrierTask(execCtuEncode, wu)
+            activate TP
+            TP->>Exec: CTU_ENCODE stage
+            activate Exec
+            Note over Exec: internal scheduler submits<br/>TU-mode-trial within CTU
+            Exec-->>TP: CTU mode decision + TU pipeline complete
+            deactivate Exec
+            TP->>Callback: xOnComplete
+            deactivate TP
+            Callback->>Callback: advance CtuWavefrontState[ctuRsAddr]
+            Note over Callback: neighbor CTUs may now<br/>have spatial deps satisfied
+        end
+        Sched-->>EncSlice: 0 (in progress) or 1 (done)
+    end
+```
+
+### 4.2 Mode-trial flow (within one CTU_ENCODE WorkUnit)
 
 ```mermaid
 sequenceDiagram

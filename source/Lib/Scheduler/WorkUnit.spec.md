@@ -6,7 +6,7 @@
 
 **Dependencies**: `std::atomic`, `<cstdint>`, `CommonDef.h` (for `ComponentID`). No encoder-specific headers.
 
-**Lifecycle**: WorkUnits are created by `TUPipelineDAG::build()` in a pre-allocated pool. They are not individually allocated or freed — the pool is reused across mode trials.
+**Lifecycle**: WorkUnits are created by `TUPipelineDAG::build()` (per-mode-trial) or `PictureDAG::build()` (per-frame wavefront) in a pre-allocated pool. They are not individually allocated or freed — the pool is reused across frames.
 
 ## 2. Component Specifications
 
@@ -22,6 +22,7 @@ namespace vvenc {
 
 enum class Stage : uint8_t
 {
+    // —— TU pipeline stages (temporal: one mode trial of one CU) ——
     INIT_PRED    = 0,   ///< Prepare intra reference samples
     PREDICT      = 1,   ///< Generate prediction signal (intra or inter)
     RESIDUAL     = 2,   ///< resi = org - pred
@@ -34,13 +35,45 @@ enum class Stage : uint8_t
     INV_XFORM    = 9,   ///< 2D inverse DCT/DST
     RECONSTRUCT  = 10,  ///< reco = pred + resi
     DISTORTION   = 11,  ///< SSE computation
-    _COUNT       = 12
+
+    // —— CTU pipeline stages (spatial: wavefront across CTUs in a frame) ——
+    CTU_ENCODE   = 12,  ///< Full mode decision + TU pipeline for one CTU
+    RECON_WRITE  = 13,  ///< Write final CTU reconstruction to picture buffer
+    LF_VER       = 14,  ///< Vertical deblocking filter
+    LF_HOR       = 15,  ///< Horizontal deblocking filter
+    SAO_FILTER   = 16,  ///< Sample adaptive offset
+    ALF_STATS    = 17,  ///< ALF gradient statistics collection
+    ALF_DERIVE   = 18,  ///< ALF filter derivation
+    ALF_RECON    = 19,  ///< ALF reconstruction
+    CCALF_STATS  = 20,  ///< CCALF statistics
+    CCALF_DERIVE = 21,  ///< CCALF filter derivation
+    CCALF_RECON  = 22,  ///< CCALF reconstruction
+
+    _COUNT       = 23
 };
 
 }
 ```
 
-### 2.2 Typedef: `WorkFunc`
+### 2.2 Constants: Spatial Dependency Types
+
+```cpp
+namespace vvenc {
+
+/// Bitmask flags for m_spatialDepMask on CTU-level WorkUnits.
+/// A non-zero mask means the unit must check neighbor-completion
+/// before it becomes dispatchable.
+static constexpr uint8_t SPATIAL_LEFT      = 1 << 0;
+static constexpr uint8_t SPATIAL_TOP       = 1 << 1;
+static constexpr uint8_t SPATIAL_TOP_RIGHT = 1 << 2;
+static constexpr uint8_t SPATIAL_BOT_RIGHT = 1 << 3;
+
+}
+```
+
+TU-internal WorkUnits set `m_spatialDepMask = 0`. CTU-level stages (CTU_ENCODE, LF_VER, etc.) set the appropriate neighbor bits. The scheduler checks `m_pCtuStates[neighborAddr] >= requiredStage` before dispatching.
+
+### 2.3 Typedef: `WorkFunc`
 
 ```cpp
 namespace vvenc {
@@ -55,23 +88,23 @@ using WorkFunc = bool (*)(WorkUnit* pWu, void* pScratch);
 }
 ```
 
-### 2.3 Struct: `WorkUnit`
+### 2.4 Struct: `WorkUnit`
 
 ```cpp
 namespace vvenc {
 
 struct WorkUnit
 {
-    /// Pipeline stage this unit represents
+    /// Pipeline stage this unit represents (TU-level or CTU-level)
     Stage           m_eStage;
 
-    /// Flat TU index within the mode trial's TU list
+    /// Flat TU or CU index within the containing DAG
     uint32_t        m_tuId;
 
     /// Colour component index (COMP_Y, COMP_Cb, COMP_Cr)
     ComponentID     m_compId;
 
-    /// Transform block dimensions
+    /// Transform block dimensions (TU-level only)
     int             m_width     = 0;
     int             m_height    = 0;
 
@@ -84,7 +117,24 @@ struct WorkUnit
     /// Coded block flag (pre-computed by earlier stage)
     bool            m_bCbf      = false;
 
-    /// Number of remaining dependencies. When 0, the unit is ready to dispatch.
+    /// --- CTU spatial metadata (for wavefront dispatch) ---
+
+    /// CTU raster-scan address in the picture (0..numCtuInPic-1)
+    uint32_t        m_ctuRsAddr    = 0;
+
+    /// CTU grid column
+    uint16_t        m_ctuPosX      = 0;
+
+    /// CTU grid row
+    uint16_t        m_ctuPosY      = 0;
+
+    /// Spatial dependency type mask (0 for TU-internal units).
+    /// Bits: SPATIAL_LEFT, SPATIAL_TOP, SPATIAL_TOP_RIGHT, SPATIAL_BOT_RIGHT.
+    uint8_t         m_spatialDepMask = 0;
+
+    /// --- Dependency tracking ---
+
+    /// Number of remaining dependencies. When 0 and spatial deps met, ready.
     std::atomic<int> m_depCount{ 0 };
 
     /// List of dependent work units; each gets depCount-- on completion.
@@ -92,6 +142,8 @@ struct WorkUnit
 
     /// Number of entries in m_pDependents
     int             m_numDependents  = 0;
+
+    /// --- Buffer I/O ---
 
     /// Input buffer pointer (from previous stage's output or ring buffer)
     void*           m_pInputBuf      = nullptr;
@@ -114,7 +166,8 @@ struct WorkUnit
 ```mermaid
 graph TB
     subgraph WorkUnit["WorkUnit Struct"]
-        Stage["m_eStage<br/>INIT_PRED..DISTORTION"]
+        Stage["m_eStage<br/>INIT_PRED..CCALF_RECON"]
+        Spatial["m_ctuRsAddr / m_ctuPosX/Y<br/>m_spatialDepMask"]
         Deps["m_depCount / m_pDependents<br/>dependency tracking"]
         Buf["m_pInputBuf / m_pOutputBuf<br/>ring buffer slots"]
         Exec["m_pfnExec<br/>function pointer"]
@@ -127,8 +180,9 @@ graph TB
         WUN["WorkUnit [N]"]
     end
 
-    subgraph DAG["DAG Builder"]
-        DepsEdges["dependency edges"]
+    subgraph DAG_Builders["DAG Builders"]
+        tDAG["TUPipelineDAG<br/>per-mode-trial"]
+        pDAG["PictureDAG<br/>per-frame wavefront"]
     end
 
     subgraph Executor["Executor Functions"]
@@ -138,10 +192,14 @@ graph TB
         quantFn["DepQuant::xQuantDQ"]
         invFn["xIT / xDeQuant"]
         reconFn["reco = pred + resi"]
+        ctuFn["xProcessCtuTask<br/>wavefront state machine"]
     end
 
-    Pool -->|filled by| DAG
-    DAG -->|creates edges| Deps
+    Pool -->|filled by| tDAG
+    Pool -->|filled by| pDAG
+    tDAG -->|creates edges| Deps
+    pDAG -->|creates spatial edges| Deps
+    pDAG -->|sets| Spatial
     Stage -->|selects| Exec
     Exec -->|dispatches to| predFn
     Exec -->|dispatches to| residFn
@@ -149,6 +207,7 @@ graph TB
     Exec -->|dispatches to| quantFn
     Exec -->|dispatches to| invFn
     Exec -->|dispatches to| reconFn
+    Exec -->|dispatches to| ctuFn
     Buf -->|reads/writes| RingBuffer
 ```
 
@@ -166,7 +225,10 @@ No D3 animation — a struct definition has no temporal state machine to verify.
 
 | Test | What to Verify |
 |------|----------------|
-| Stage enum uniqueness | All values 0..11, no duplicates, _COUNT = 12 |
+| Stage enum uniqueness | All values 0..22, no duplicates, _COUNT = 23 |
+| SpatialDepType constants | SPATIAL_LEFT=1, SPATIAL_TOP=2, TOP_RIGHT=4, BOT_RIGHT=8, no overlap |
+| CTU-level unit defaults | ctuRsAddr=0, ctuPosX=0, ctuPosY=0, spatialDepMask=0 |
+| TU-level spatial mask | TU WorkUnits set spatialDepMask=0 by default |
 | WorkUnit default state | depCount=0, all pointers null |
 | depCount decrement | CAS correctly produces 0 after N decrements |
 | depCount negative guard | Cannot decrement below 0 (unsigned/saturating) |
