@@ -16,7 +16,8 @@
     "interp-vert-8tap-debug-5": "allow",
     "high-level-optimization-plan": "allow",
     "note": "allow",
-    "sad-asm-debug-8": "allow"
+    "sad-asm-debug-8": "allow",
+    "scheduler-phase-1-9": "allow"
   },
   "mcp": {
     "playwright": {
