@@ -231,6 +231,14 @@ if( VVENC_ENABLE_SCHEDULER_DISPATCH )
     "${SCHED_DIR}/SchedulerTrace.cpp"
     "${SCHED_DIR}/SchedulerExecutors.cpp"
   )
+else()
+  set( SCHED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../Scheduler" )
+  list( APPEND SRC_FILES
+    "${SCHED_DIR}/WorkUnit.h"
+    "${SCHED_DIR}/RingBuffer.cpp"
+    "${SCHED_DIR}/TUScheduler.cpp"
+    "${SCHED_DIR}/SchedulerTrace.cpp"
+  )
 endif()
 
 add_library( ${LIB_NAME} ${SRC_FILES} ${ASM_SRC_FILES} $<$<TARGET_EXISTS:${LIB_NAME}_x86_simd>:$<TARGET_OBJECTS:${LIB_NAME}_x86_simd>> $<$<TARGET_EXISTS:${LIB_NAME}_arm_simd>:$<TARGET_OBJECTS:${LIB_NAME}_arm_simd>> ${INC_FILES} ${NATVIS_FILES} ${RESOURCE_FILE} )
@@ -239,6 +247,9 @@ target_compile_definitions( ${LIB_NAME} PUBLIC $<$<STREQUAL:$<TARGET_PROPERTY:${
 
 target_include_directories( ${LIB_NAME} SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../include> $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}> )
 
+if( VVENC_ENABLE_SCHEDULER_DISPATCH )
+  target_compile_definitions( ${LIB_NAME} PRIVATE ENABLE_SCHEDULER_DISPATCH=1 )
+endif()
 if( VVENC_ENABLE_HW_PREANALYSIS )
   target_compile_definitions( ${LIB_NAME} PRIVATE VVENC_ENABLE_HW_PREANALYSIS=1 )
 endif()
@@ -257,12 +268,15 @@ else()
   target_link_libraries( ${LIB_NAME} PRIVATE Threads::Threads )
 endif()
 
+if( VVENC_ENABLE_SCHEDULER_TRACE )
+  target_compile_definitions( ${LIB_NAME} PRIVATE ENABLE_SCHEDULER_TRACE=1 )
+endif()
+
 if( VVENC_ENABLE_ML_LIGHTGBM AND TARGET vvenc_ml )
   target_link_libraries( ${LIB_NAME} PRIVATE vvenc_ml )
   target_compile_definitions( ${LIB_NAME} PRIVATE VVENC_ENABLE_ML_LIGHTGBM=1 )
 endif()
 
-target_compile_definitions( ${LIB_NAME} PRIVATE ENABLE_SCHEDULER_DISPATCH=1 )
 if( VVENC_ENABLE_SCHEDULER_TRACE )
   target_compile_definitions( ${LIB_NAME} PRIVATE ENABLE_SCHEDULER_TRACE=1 )
 endif()

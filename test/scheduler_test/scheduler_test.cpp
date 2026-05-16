@@ -243,6 +243,55 @@ static int testTUSchedulerPolicy()
     return 0;
 }
 
+static std::atomic<int> g_execCounter{0};
+
+static bool tuSeqExecFunc(vvenc::WorkUnit* pWu, void*)
+{
+    pWu->m_pScratch = (void*)(size_t)g_execCounter.fetch_add(1);
+    return true;
+}
+
+static int testTUSchedulerTuSequential()
+{
+    g_execCounter.store(0);
+
+    vvenc::TUScheduler sched;
+    sched.init(nullptr, 8);
+    sched.setPolicy(vvenc::BatchPolicy::TU_SEQUENTIAL);
+
+    vvenc::MockTU tus[2];
+    tus[0] = { 8, 8, 0x01, 0, 32 };
+    tus[1] = { 8, 8, 0x01, 0, 32 };
+
+    int poolSize = vvenc::TUPipelineDAG::estimatePoolSize(tus, 2);
+    std::vector<vvenc::WorkUnit> pool(poolSize);
+    int numUnits = 0;
+    vvenc::TUPipelineDAG::build(tus, 2, pool.data(), poolSize, numUnits);
+
+    for (int i = 0; i < numUnits; i++)
+        pool[i].m_pfnExec = tuSeqExecFunc;
+
+    int ret = sched.executeWorkUnits(pool.data(), numUnits);
+    if (ret != 0) return 1;
+
+    int lastTu0Order = -1;
+    int firstTu1Order = 999;
+    for (int i = 0; i < numUnits; i++)
+    {
+        int order = (int)(size_t)pool[i].m_pScratch;
+        if (pool[i].m_tuId == 0 && order > lastTu0Order)
+            lastTu0Order = order;
+        if (pool[i].m_tuId == 1 && order < firstTu1Order)
+            firstTu1Order = order;
+    }
+
+    if (lastTu0Order < 0 || firstTu1Order > 27) return 2;
+    if (firstTu1Order <= lastTu0Order) return 3;
+
+    sched.destroy();
+    return 0;
+}
+
 static int testTUSchedulerInvalid()
 {
     vvenc::TUScheduler sched;
@@ -338,6 +387,7 @@ int main(int argc, char* argv[])
     TEST(testTUSchedulerSubmitModeTrial());
     TEST(testTUSchedulerOrdering());
     TEST(testTUSchedulerPolicy());
+    TEST(testTUSchedulerTuSequential());
     TEST(testTUSchedulerInvalid());
     TEST(testSchedulerTraceInit());
     TEST(testSchedulerTraceRecord());

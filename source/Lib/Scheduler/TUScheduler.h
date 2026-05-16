@@ -21,7 +21,6 @@ extern bool g_schedulerActive;
 
 class NoMallocThreadPool;
 class RingBuffer;
-class CodingUnit;
 class CodingStructure;
 class Slice;
 class Picture;
@@ -45,7 +44,6 @@ public:
 
     int submitModeTrial(const MockTU* pTus, int numTus,
                         void* pScratch, int scratchSize);
-    int submitModeTrial(CodingUnit* pCu);
 
     int executeWorkUnits(WorkUnit* pPool, int numUnits);
 
@@ -80,8 +78,9 @@ private:
     int xSubmitFrameReady();
     static void xOnComplete(WorkUnit* pWu, int& completed);
     int xCalcPoolSize(const MockTU* pTus, int numTus);
-    int xCalcPoolSize(CodingUnit* pCu);
+#ifdef VVENC_SOURCE
     int xCalcFramePoolSize(Slice& slice);
+#endif
     int xInitCtuStates(Slice& slice);
 };
 

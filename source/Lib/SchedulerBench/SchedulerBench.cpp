@@ -74,7 +74,7 @@ static int runSelfTest()
         return 4;
     }
 
-    ret = sched.submitModeTrial(tus, 3, nullptr, 0);
+    ret = sched.executeWorkUnits(pPool, numUnits);
     if (ret < 0)
     {
         printf("Mode trial failed: %d\n", ret);
@@ -167,7 +167,7 @@ static int runWithTrace(const char* traceFile, BatchPolicy policy, int windowSiz
         sched.setPolicy(policy);
 
         double t0 = (double)clock() / CLOCKS_PER_SEC;
-        ret = sched.submitModeTrial(tus, numTus, nullptr, 0);
+        ret = sched.executeWorkUnits(pPool, numUnits);
         double t1 = (double)clock() / CLOCKS_PER_SEC;
 
         if (ret < 0)

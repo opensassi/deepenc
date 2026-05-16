@@ -105,11 +105,6 @@ int TUScheduler::xCalcPoolSize(const MockTU* pTus, int numTus)
 }
 
 #ifdef VVENC_SOURCE
-int TUScheduler::xCalcPoolSize(CodingUnit* pCu)
-{
-    return TUPipelineDAG::estimatePoolSize(pCu);
-}
-
 int TUScheduler::xCalcFramePoolSize(Slice& slice)
 {
     return PictureDAG::estimatePoolSize(slice);
@@ -164,55 +159,6 @@ int TUScheduler::submitModeTrial(const MockTU* pTus, int numTus,
     return 0;
 }
 
-#ifdef VVENC_SOURCE
-int TUScheduler::submitModeTrial(CodingUnit* pCu)
-{
-    if (!m_bInitialized)
-    {
-        return -1;
-    }
-
-    int poolSize = xCalcPoolSize(pCu);
-    if (poolSize < 1)
-    {
-        return -2;
-    }
-
-    if (m_pWorkPool)
-    {
-        delete[] m_pWorkPool;
-        m_pWorkPool = nullptr;
-    }
-    m_pWorkPool = new WorkUnit[poolSize];
-    m_poolSize = poolSize;
-
-    int numUnits = 0;
-    int ret = TUPipelineDAG::build(pCu, m_pWorkPool, poolSize, numUnits);
-    if (ret < 0)
-    {
-        return -2;
-    }
-
-    int remaining = numUnits;
-    int prevRemaining = remaining;
-
-    while (remaining > 0)
-    {
-        int completed = 0;
-        ret = xSubmitReady(m_pWorkPool, numUnits, completed);
-        if (ret < 0) break;
-        remaining -= completed;
-        if (remaining == prevRemaining && completed == 0)
-        {
-            break;
-        }
-        prevRemaining = remaining;
-    }
-
-    return 0;
-}
-#endif
-
 int TUScheduler::executeWorkUnits(WorkUnit* pPool, int numUnits)
 {
     if (!pPool || numUnits < 1) return -1;
@@ -238,10 +184,44 @@ int TUScheduler::xSubmitReady(WorkUnit* pUnits, int numUnits, int& completed)
 {
     completed = 0;
 
+    uint32_t activeTu = 0;
+    if (m_ePolicy == BatchPolicy::TU_SEQUENTIAL)
+    {
+        uint32_t maxTu = 0;
+        for (int i = 0; i < numUnits; i++)
+        {
+            if (pUnits[i].m_tuId > maxTu)
+                maxTu = pUnits[i].m_tuId;
+        }
+        for (uint32_t tu = 0; tu <= maxTu; tu++)
+        {
+            bool allDone = true;
+            for (int i = 0; i < numUnits; i++)
+            {
+                if (pUnits[i].m_tuId == tu && pUnits[i].m_depCount.load() >= 0)
+                {
+                    allDone = false;
+                    break;
+                }
+            }
+            if (!allDone)
+            {
+                activeTu = tu;
+                break;
+            }
+            activeTu = tu + 1;
+        }
+    }
+
     for (int i = 0; i < numUnits; i++)
     {
         WorkUnit* pWu = &pUnits[i];
         if (pWu->m_depCount.load(std::memory_order_acquire) != 0)
+        {
+            continue;
+        }
+
+        if (m_ePolicy == BatchPolicy::TU_SEQUENTIAL && pWu->m_tuId > activeTu)
         {
             continue;
         }
