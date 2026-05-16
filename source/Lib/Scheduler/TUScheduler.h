@@ -18,12 +18,16 @@ class TUScheduler;
 extern TUScheduler* g_pSchedulerTraceTarget;
 extern TUScheduler* g_pScheduler;
 extern bool g_schedulerActive;
+extern int  g_schedulerDispatchCount;      // dispatch hook fire counter
+bool vvencSchedulerDisabled();           // runtime gate: true = bypass scheduler init
+void vvencSetSchedulerDisabled(bool disabled);
 
 class NoMallocThreadPool;
 class RingBuffer;
 class CodingStructure;
 class Slice;
 class Picture;
+class EncSlice;
 struct WorkUnit;
 struct MockTU;
 
@@ -47,7 +51,7 @@ public:
 
     int executeWorkUnits(WorkUnit* pPool, int numUnits);
 
-    int submitFrame(Slice& slice, Picture* pic);
+    int submitFrame(Slice& slice, Picture* pic, EncSlice* pEncSlice = nullptr);
     int advanceFrame();
 
     int setPolicy(BatchPolicy ePolicy);
@@ -57,6 +61,7 @@ public:
     int getWindowSize() const;
 
     RingBuffer* getRingBuffer() { return m_pRing; }
+    std::atomic<int8_t>* getCtuStates() { return m_pCtuStates; }
 
     virtual ~TUScheduler();
 

@@ -9,7 +9,23 @@
 #include "CommonLib/Picture.h"
 #include "CommonLib/Unit.h"
 
+#ifdef VVENC_SOURCE
+#include "EncoderLib/EncSlice.h"
+#endif
+
 namespace vvenc {
+
+#ifdef VVENC_SOURCE
+bool execCtuStage(WorkUnit* pWu, void* pScratch)
+{
+    (void)pScratch;
+    if (!pWu || !pWu->m_pCtx) return false;
+    CtuExecCtx* ctx = (CtuExecCtx*)pWu->m_pCtx;
+    if (!ctx->pEncSlice || !ctx->pPic) return false;
+    return ctx->pEncSlice->xProcessCtuStage(ctx->pPic,
+        ctx->ctuRsAddr, ctx->ctuPosX, ctx->ctuPosY, pWu->m_eStage);
+}
+#endif
 
 struct CtuStageDef
 {
@@ -118,7 +134,9 @@ int PictureDAG::xAddCtuEncode(uint32_t rsAddr, uint16_t posX, uint16_t posY,
         pWu->m_pInputBuf     = nullptr;
         pWu->m_pOutputBuf    = nullptr;
         pWu->m_pScratch      = nullptr;
-        pWu->m_pfnExec       = nullptr;
+#ifdef VVENC_SOURCE
+        pWu->m_pfnExec       = execCtuStage;
+#endif
 
         if (pPrev)
         {
@@ -168,38 +186,44 @@ bool PictureDAG::checkSpatialDeps(uint32_t ctuRsAddr,
 
     if (depMask & SPATIAL_LEFT)
     {
-        if (ctuPosX == 0) return false;
-        int neighborAddr = (int)ctuRsAddr - 1;
-        if (pCtuStates[neighborAddr].load(std::memory_order_acquire) < requiredStage)
+        if (ctuPosX > 0)
         {
-            return false;
+            int neighborAddr = (int)ctuRsAddr - 1;
+            if (pCtuStates[neighborAddr].load(std::memory_order_acquire) < requiredStage)
+            {
+                return false;
+            }
         }
     }
 
     if (depMask & SPATIAL_TOP)
     {
-        if (ctuPosY == 0) return false;
-        int neighborAddr = (int)ctuRsAddr - numCtuCols;
-        if (pCtuStates[neighborAddr].load(std::memory_order_acquire) < requiredStage)
+        if (ctuPosY > 0)
         {
-            return false;
+            int neighborAddr = (int)ctuRsAddr - numCtuCols;
+            if (pCtuStates[neighborAddr].load(std::memory_order_acquire) < requiredStage)
+            {
+                return false;
+            }
         }
     }
 
     if (depMask & SPATIAL_TOP_RIGHT)
     {
-        if (ctuPosY == 0) return false;
-        int neighborAddr = (int)ctuRsAddr - numCtuCols + 1;
-        if (pCtuStates[neighborAddr].load(std::memory_order_acquire) < requiredStage)
+        if (ctuPosY > 0)
         {
-            return false;
+            int neighborAddr = (int)ctuRsAddr - numCtuCols + 1;
+            if (pCtuStates[neighborAddr].load(std::memory_order_acquire) < requiredStage)
+            {
+                return false;
+            }
         }
     }
 
     if (depMask & SPATIAL_BOT_RIGHT)
     {
         int neighborAddr = (int)ctuRsAddr + numCtuCols + 1;
-        if (pCtuStates[neighborAddr].load(std::memory_order_acquire) < requiredStage)
+        if (neighborAddr >= 0 && pCtuStates[neighborAddr].load(std::memory_order_acquire) < requiredStage)
         {
             return false;
         }

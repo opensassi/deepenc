@@ -58,6 +58,10 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include <math.h>
 #include "vvenc/vvencCfg.h"
+#if ENABLE_SCHEDULER_DISPATCH
+#include "Scheduler/TUScheduler.h"
+#include "Scheduler/PictureDAG.h"
+#endif
 
 //! \ingroup EncoderLib
 //! \{
@@ -877,6 +881,51 @@ inline bool checkCtuTaskNbBotRgt( const PPS& pps, const int& ctuPosX, const int&
 {
   return ctuPosX + rightOffset < pps.pcv->widthInCtus && ctuPosY + 1 < pps.pcv->heightInCtus && ( override || pps.canFilterCtuBdry( ctuPosX, ctuPosY, rightOffset, 1 ) ) && processStates[ ctuRsAddr + rightOffset + pps.pcv->widthInCtus ] <= tskType;
 }
+
+#if ENABLE_SCHEDULER_DISPATCH
+bool EncSlice::xProcessCtuStage(Picture* pic, int ctuRsAddr,
+                                 int ctuPosX, int ctuPosY,
+                                 Stage eStage)
+{
+    (void)ctuPosX; (void)ctuPosY;
+    // Find CtuEncParam matching this CTU address
+    CtuEncParam* pParam = nullptr;
+    for (auto& cp : ctuEncParams)
+    {
+        if (cp.ctuRsAddr == (uint32_t)ctuRsAddr)
+        {
+            pParam = &cp;
+            break;
+        }
+    }
+    if (!pParam) return false;
+
+    // Set the process state to match the scheduler stage before calling xProcessCtuTask.
+    // Map scheduler Stage (CTU_ENCODE=12, etc.) to internal TaskType (CTU_ENCODE=0, etc.)
+    TaskType taskType = (TaskType)((int)eStage - (int)Stage::CTU_ENCODE);
+    if (taskType < CTU_ENCODE || taskType >= PROCESS_DONE) taskType = CTU_ENCODE;
+    m_processStates[ctuRsAddr].store(taskType, std::memory_order_release);
+
+    // Run the existing CTU processing task
+    bool ret = xProcessCtuTask<false>(0, pParam);
+
+    // After processing, sync the scheduler's CtuStates to match actual progress.
+    // Map TaskType (0-based) to CtuWfState (12-based) values.
+    extern TUScheduler* g_pScheduler;
+    if (g_pScheduler && ret)
+    {
+        TaskType currentState = m_processStates[ctuRsAddr].load(std::memory_order_acquire);
+        int8_t wfState = WF_NOT_READY;
+        if (currentState == PROCESS_DONE)
+            wfState = WF_DONE;
+        else
+            wfState = (int8_t)((int)currentState + (int)Stage::CTU_ENCODE);
+        g_pScheduler->getCtuStates()[ctuRsAddr].store(wfState, std::memory_order_release);
+    }
+
+    return ret;
+}
+#endif
 
 template<bool checkReadyState>
 bool EncSlice::xProcessCtuTask( int threadIdx, void* taskParam )

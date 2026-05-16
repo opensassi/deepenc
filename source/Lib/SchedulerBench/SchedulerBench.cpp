@@ -13,6 +13,9 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
+#include <cstdint>
+#include <algorithm>
 
 namespace vvenc {
 

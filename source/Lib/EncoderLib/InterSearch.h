@@ -338,6 +338,7 @@ struct ReuseUniMv
 /// encoder search class
 class InterSearch : public InterPrediction, AffineGradientSearch
 {
+  friend class SchedulerExecutors;
 private:
   EncModeCtrl*      m_modeCtrl;
 

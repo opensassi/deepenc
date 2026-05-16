@@ -130,6 +130,7 @@ public:
   void     printSummary        ();
   void     getParameterSets    ( AccessUnitList& au );
   int      getCurPass          () const;
+  NoMallocThreadPool* getThreadPool() const { return m_threadPool; }
 
 private:
   void     xUninitLib          ();

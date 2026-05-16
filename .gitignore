@@ -48,3 +48,5 @@ Testing/
 
 # ASM optimizer baseline profiles (generated, not committed)
 /perf/baseline/
+
+.opencode/skills/

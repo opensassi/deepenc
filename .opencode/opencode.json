@@ -20,7 +20,8 @@
     "sad-asm-debug-8": "allow",
     "scheduler-phase-1-9": "allow",
     "scheduler-phase-4-cabac-12": "allow",
-    "production-ready-11": "allow"
+    "production-ready-11": "allow",
+    "scheduler-asan-debug-14": "allow"
   },
   "mcp": {
     "playwright": {

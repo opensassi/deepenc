@@ -60,10 +60,16 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "CommonLib/dtrace_buffer.h"
 #include "CommonLib/Reshape.h"
 #include "CommonLib/TimeProfiler.h"
-#if ENABLE_SCHEDULER_TRACE
+#if ENABLE_SCHEDULER_TRACE || ENABLE_SCHEDULER_DISPATCH
 #include "Scheduler/WorkUnit.h"
 #include "Scheduler/SchedulerTrace.h"
 #include "Scheduler/TUScheduler.h"
+#endif
+#if ENABLE_SCHEDULER_DISPATCH
+#include "Scheduler/TUPipelineDAG.h"
+#include "Scheduler/SchedulerExecutors.h"
+#include "Scheduler/RingBuffer.h"
+#include "CommonLib/TypeDef.h"
 #endif
 
 #include <math.h>
@@ -4303,6 +4309,31 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
   const TempCtx ctxStart( m_CtxCache, m_CABACEstimator->getCtx() );
 
+#if ENABLE_SCHEDULER_DISPATCH
+  extern TUScheduler* g_pScheduler;
+  extern bool g_schedulerActive;
+  extern int g_schedulerDispatchCount;
+  if (g_pScheduler && !g_schedulerActive)
+  {
+    g_schedulerActive = true;
+    g_schedulerDispatchCount++;
+    WorkUnit wu = {};
+    wu.m_pfnExec = SchedulerExecutors::execInterTu;
+    InterTuExecCtx* pCtx = new InterTuExecCtx();
+    memset(pCtx, 0, sizeof(InterTuExecCtx));
+    pCtx->pSearch     = this;
+    pCtx->pCs         = &cs;
+    pCtx->pPartitioner = &partitioner;
+    pCtx->pZeroDist   = &zeroDistortion;
+    pCtx->pCtxStart   = new TempCtx(m_CtxCache, m_CABACEstimator->getCtx());
+    wu.m_pCtx         = pCtx;
+    g_pScheduler->executeWorkUnits(&wu, 1);
+    delete (TempCtx*)pCtx->pCtxStart;
+    delete pCtx;
+    g_schedulerActive = false;
+  }
+  else
+#endif
   xEstimateInterResidualQT(cs, partitioner, &zeroDistortion );
   TransformUnit& firstTU = *cs.getTU( partitioner.chType );
 

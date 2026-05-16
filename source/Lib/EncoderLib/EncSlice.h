@@ -52,6 +52,10 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include <atomic>
 
+#if ENABLE_SCHEDULER_DISPATCH
+#include "Scheduler/WorkUnit.h"
+#endif
+
 //! \ingroup EncoderLib
 //! \{
 
@@ -144,6 +148,19 @@ public:
   void    encodeSliceData     ( Picture* pic );
   void    saoDisabledRate     ( CodingStructure& cs, SAOBlkParam* reconParams );
   void    finishCompressSlice ( Picture* pic, Slice& slice );
+
+#if ENABLE_SCHEDULER_DISPATCH
+  /** \brief Process one CTU at a given stage (called by scheduler executor).
+   *  \param[in]  pic        picture
+   *  \param[in]  ctuRsAddr  CTU raster-scan address
+   *  \param[in]  ctuPosX    CTU column position
+   *  \param[in]  ctuPosY    CTU row position
+   *  \param[in]  eStage     scheduler stage to process
+   *  \retval true  stage processed
+   *  \retval false skip (dependency not met)
+   */
+  bool xProcessCtuStage(Picture* pic, int ctuRsAddr, int ctuPosX, int ctuPosY, Stage eStage);
+#endif
 
 private:
   void    xInitSliceLambdaQP  ( Slice* slice );

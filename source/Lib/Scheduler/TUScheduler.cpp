@@ -13,6 +13,7 @@
 #include "CommonLib/CodingStructure.h"
 #include "CommonLib/Slice.h"
 #include "CommonLib/Picture.h"
+#include "PictureDAG.h"
 #endif
 
 #include <cstdlib>
@@ -26,6 +27,11 @@ TUScheduler* g_pSchedulerTraceTarget = nullptr;
 SchedulerTrace* g_pSchedulerTrace = nullptr;
 TUScheduler* g_pScheduler = nullptr;
 bool g_schedulerActive = false;
+int  g_schedulerDispatchCount = 0;
+static bool s_schedulerDisabled = false;
+
+bool vvencSchedulerDisabled() { return s_schedulerDisabled; }
+void vvencSetSchedulerDisabled(bool disabled) { s_schedulerDisabled = disabled; }
 
 int TUScheduler::init(NoMallocThreadPool* pPool, int windowSize)
 {
@@ -91,6 +97,7 @@ int TUScheduler::destroy()
     m_numCtuCols = 0;
     m_bFrameActive = false;
     m_bInitialized = false;
+    g_pSchedulerTraceTarget = nullptr;
     return 0;
 }
 
@@ -260,7 +267,7 @@ int TUScheduler::xSubmitFrameReady()
         if (!PictureDAG::checkSpatialDeps(
                 pWu->m_ctuRsAddr, pWu->m_ctuPosX, pWu->m_ctuPosY,
                 pWu->m_spatialDepMask,
-                (int8_t)((int)pWu->m_eStage - 1),
+                PictureDAG::xRequiredNeighborStage(pWu->m_eStage),
                 m_pCtuStates, m_numCtuCols))
         {
             continue;
@@ -310,7 +317,7 @@ void TUScheduler::xOnComplete(WorkUnit* pWu, int& completed)
 }
 
 #ifdef VVENC_SOURCE
-int TUScheduler::submitFrame(Slice& slice, Picture* pic)
+int TUScheduler::submitFrame(Slice& slice, Picture* pic, EncSlice* pEncSlice)
 {
     if (!m_bInitialized)
     {
@@ -357,6 +364,22 @@ int TUScheduler::submitFrame(Slice& slice, Picture* pic)
         return -2;
     }
 
+    // Wire CTU stage executors to all WorkUnits
+    for (int i = 0; i < numUnits; i++)
+    {
+        CtuExecCtx* pCtx = new CtuExecCtx();
+        pCtx->pEncSlice = pEncSlice;
+        pCtx->pPic      = pic;
+        pCtx->ctuRsAddr = (int)m_pWorkPool[i].m_ctuRsAddr;
+        pCtx->ctuPosX   = (int)m_pWorkPool[i].m_ctuPosX;
+        pCtx->ctuPosY   = (int)m_pWorkPool[i].m_ctuPosY;
+        m_pWorkPool[i].m_pfnExec = execCtuStage;
+        m_pWorkPool[i].m_pCtx    = pCtx;
+    }
+
+    // Connect trace target so xOnComplete updates CtuStates
+    g_pSchedulerTraceTarget = this;
+
     m_bFrameActive = true;
 
     return 0;
@@ -385,6 +408,15 @@ int TUScheduler::advanceFrame()
     if (allDone >= m_numCtuInPic)
     {
         m_bFrameActive = false;
+        // Free CtuExecCtx allocations
+        for (int i = 0; i < m_poolSize; i++)
+        {
+            if (m_pWorkPool[i].m_pCtx)
+            {
+                delete (CtuExecCtx*)m_pWorkPool[i].m_pCtx;
+                m_pWorkPool[i].m_pCtx = nullptr;
+            }
+        }
         return 1;
     }
 

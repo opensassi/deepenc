@@ -99,12 +99,15 @@ int TUPipelineDAG::build(CodingUnit* pCu,
 
                 if (s == 0 && pLastInTu)
                 {
-                    pWu->m_depCount.store(1, std::memory_order_relaxed);
-                    int oldCount = pLastInTu->m_depCount.fetch_add(1, std::memory_order_acq_rel);
-                    if (oldCount == 0)
-                    {
-                        pWu->m_depCount.store(0, std::memory_order_relaxed);
-                    }
+                    pWu->m_depCount.fetch_add(1, std::memory_order_acq_rel);
+                    WorkUnit** oldDeps = pLastInTu->m_pDependents;
+                    int oldNum = pLastInTu->m_numDependents;
+                    WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
+                    for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
+                    newDeps[oldNum] = pWu;
+                    delete[] oldDeps;
+                    pLastInTu->m_pDependents = newDeps;
+                    pLastInTu->m_numDependents = oldNum + 1;
                 }
 
                 pPrev = pWu;

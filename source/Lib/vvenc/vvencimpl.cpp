@@ -139,18 +139,6 @@ int VVEncImpl::checkConfig( const vvenc_config& config )
 
 int VVEncImpl::init( vvenc_config* config )
 {
-#if ENABLE_SCHEDULER_DISPATCH
-  if (!g_pScheduler)
-  {
-    g_pScheduler = new TUScheduler();
-    if (g_pScheduler->init(nullptr, 8) < 0)
-    {
-      delete g_pScheduler;
-      g_pScheduler = nullptr;
-    }
-  }
-#endif
-
 #if ENABLE_SCHEDULER_TRACE
   if (!g_pSchedulerTrace)
   {
@@ -223,6 +211,19 @@ int VVEncImpl::init( vvenc_config* config )
     msg.log( VVENC_ERROR, "\n%s\n", e.what() );
     m_cErrorString = e.what();
     return VVENC_ERR_UNSPECIFIED;
+  }
+#endif
+
+#if ENABLE_SCHEDULER_DISPATCH
+  g_schedulerDispatchCount = 0;
+  if (!g_pScheduler && !vvencSchedulerDisabled() && m_pEncLib)
+  {
+    g_pScheduler = new TUScheduler();
+    if (g_pScheduler->init(m_pEncLib->getThreadPool(), 8) < 0)
+    {
+      delete g_pScheduler;
+      g_pScheduler = nullptr;
+    }
   }
 #endif
 
@@ -365,6 +366,22 @@ int VVEncImpl::uninit()
     m_pHWPreAnalyzer->uninit();
     delete m_pHWPreAnalyzer;
     m_pHWPreAnalyzer = nullptr;
+  }
+#endif
+
+#if ENABLE_SCHEDULER_DISPATCH
+  if (g_pScheduler)
+  {
+    g_pScheduler->destroy();
+    delete g_pScheduler;
+    g_pScheduler = nullptr;
+  }
+#endif
+#if ENABLE_SCHEDULER_TRACE
+  if (g_pSchedulerTrace)
+  {
+    delete g_pSchedulerTrace;
+    g_pSchedulerTrace = nullptr;
   }
 #endif
 

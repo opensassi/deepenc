@@ -10,7 +10,10 @@ namespace vvenc {
 
 struct WorkUnit;
 class IntraSearch;
+class InterSearch;
 class TempCtx;
+class CodingStructure;
+class Partitioner;
 
 struct IntraTuExecCtx
 {
@@ -25,12 +28,22 @@ struct IntraTuExecCtx
     TempCtx*         pCtxStart;
 };
 
+struct InterTuExecCtx
+{
+    InterSearch*     pSearch;
+    CodingStructure* pCs;
+    Partitioner*     pPartitioner;
+    uint64_t*        pZeroDist;
+    TempCtx*         pCtxStart;
+};
+
 class SchedulerExecutors
 {
 public:
     static bool execIntraTu(WorkUnit* pWu, void* pScratch);
     static int  setupIntraTu(IntraSearch* pSearch,
                              WorkUnit* pPool, int numUnits);
+    static bool execInterTu(WorkUnit* pWu, void* pScratch);
 };
 
 }

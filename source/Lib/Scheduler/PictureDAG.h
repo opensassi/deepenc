@@ -11,6 +11,22 @@
 
 namespace vvenc {
 
+#ifdef VVENC_SOURCE
+class EncSlice;
+class Picture;
+
+struct CtuExecCtx
+{
+    EncSlice* pEncSlice;
+    Picture*  pPic;
+    int       ctuRsAddr;
+    int       ctuPosX;
+    int       ctuPosY;
+};
+
+bool execCtuStage(WorkUnit* pWu, void* pScratch);
+#endif
+
 class Slice;
 class Picture;
 struct WorkUnit;
@@ -47,6 +63,9 @@ public:
 
     virtual ~PictureDAG();
 
+    /** \brief Look up the neighbor stage required before a given scheduler stage can run. */
+    static int8_t xRequiredNeighborStage(Stage stage);
+
 private:
     static int xAddCtuEncode(uint32_t rsAddr, uint16_t posX, uint16_t posY,
                              WorkUnit*& pNext, int& numUnits,
@@ -60,7 +79,6 @@ private:
                             std::atomic<int8_t>* pCtuStates,
                             int numCtuCols);
     static void xLinkStages(WorkUnit* pPrev, WorkUnit* pNext);
-    static int8_t xRequiredNeighborStage(Stage stage);
 };
 
 }

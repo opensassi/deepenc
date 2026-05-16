@@ -296,6 +296,45 @@ mem_load_uops_retired.llc_hit,mem_load_uops_retired.llc_miss
 
 When a new ASM implementation crashes, produces wrong results, or is slower than the C++ baseline, follow this methodology:
 
+### Hypothesis-Driven Debugging
+
+**Trigger**: Any test failure or unexpected runtime error.
+
+1. **Do not modify any code.** Instead, open a sub-agent or a structured reasoning block dedicated to diagnosis.
+
+2. **Formulate exactly 3 hypotheses** about the root cause of the failure. Each hypothesis must be a specific, falsifiable statement (e.g., "The YMM register contains the wrong data after the `vpgatherdd` because the index vector was not zero‑extended"). If the problem is clearly more complex, you may generate up to 5 hypotheses, but 3 is the default.
+
+3. **For each hypothesis, write a 1–3 step debugger plan** that will **conclusively confirm or reject** that hypothesis. A good plan:
+   - Specifies the exact breakpoint location (function, file:line, or symbol).
+   - Identifies the critical variables, registers, or memory regions to inspect.
+   - Describes the expected value *if the hypothesis is true* and a clear alternative *if the hypothesis is false*.
+   - Uses conditional breakpoints or watchpoints when the failure occurs only on a specific iteration.
+   - Leaves no ambiguity: after executing the plan, the hypothesis should be definitively true or false.
+
+4. **Execute the plans in order of diagnostic power.** Prefer plans that can eliminate multiple hypotheses at once (e.g., inspecting a single data structure that both Hypothesis A and Hypothesis B depend upon). If the first plan confirms a hypothesis, skip the remaining plans for that failure and proceed to fix.
+
+5. **After the fix is applied, re‑run the test.** If the test passes, the hypothesis is proven. If it fails again, return to step 1 and reformulate remaining hypotheses (if any) or generate new ones based on the new evidence.
+
+**Example (abbreviated):**
+
+```
+Test failure: SAD8 AVX2 kernel returns incorrect sum for aligned inputs.
+
+Hypothesis 1: The down‑counting loop terminates one iteration early.
+  Plan: Set breakpoint at sad8_avx2_loop_exit. Check ecx (loop counter).
+        If ecx != 0 → hypothesis confirmed (early exit).
+        If ecx == 0 → hypothesis rejected (loop completed fully).
+
+Hypothesis 2: The horizontal add reduction uses wrong permutation.
+  Plan: Break after the first `vphaddd` instruction. Inspect YMM0 lanes.
+        If lane values are not pairwise sums of input → confirmed.
+        If lane values are correct → rejected.
+
+Hypothesis 3: Input data is misaligned, causing `vmovdqa` to fault or load garbage.
+  Plan: Break at entry. Examine RSI and alignment flags.
+        If (RSI % 32) != 0 → confirmed; else rejected.
+```
+
 ### Crash Analysis (SEGFAULT)
 
 1. **Run under GDB**: `gdb --args <bin> <args>`

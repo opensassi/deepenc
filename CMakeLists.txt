@@ -516,8 +516,10 @@ if( VVENC_ENABLE_ML_LIGHTGBM )
 endif()
 
 if( VVENC_ENABLE_HW_PREANALYSIS )
-  add_subdirectory( "test/hw_preanalysis" )
-  add_subdirectory( "test/hw_pipeline_bench" )
+    add_subdirectory( "test/hw_pipeline_bench" )
+endif()
+if( VVENC_ENABLE_SCHEDULER_DISPATCH )
+    add_subdirectory( "test/sched_pipeline_bench" )
 endif()
 
 if( VVENC_ENABLE_SCHEDULER_DISPATCH )

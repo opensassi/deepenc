@@ -1277,9 +1277,11 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
 #if ENABLE_SCHEDULER_DISPATCH
   extern TUScheduler* g_pScheduler;
   extern bool g_schedulerActive;
+  extern int g_schedulerDispatchCount;
   if (g_pScheduler && !g_schedulerActive)
   {
     g_schedulerActive = true;
+    g_schedulerDispatchCount++;
     CodingUnit* pCu = tu.cu;
     CodingStructure& lCs = *tu.cs;
 
@@ -1305,6 +1307,14 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
         }
         ctx->compId = pPool[i].m_compId;
         ctx->loadTr = true;
+        // Propagate output pointers only to the matching TU+component
+        if (pPool[i].m_tuId == tu.idx && pPool[i].m_compId == (uint8_t)compID)
+        {
+          ctx->pDist                 = &ruiDist;
+          ctx->pNumSig               = numSig;
+          ctx->pPred                 = predBuf;
+          ctx->checkCrossCPrediction = checkCrossCPrediction;
+        }
         pPool[i].m_pCtx = ctx;
       }
 
