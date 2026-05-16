@@ -56,6 +56,17 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "CommonLib/Reshape.h"
 #include <math.h>
 #include "vvenc/vvencCfg.h"
+#if ENABLE_SCHEDULER_TRACE || ENABLE_SCHEDULER_DISPATCH
+#include "Scheduler/WorkUnit.h"
+#include "Scheduler/SchedulerTrace.h"
+#include "Scheduler/TUScheduler.h"
+#endif
+#if ENABLE_SCHEDULER_DISPATCH
+#include "Scheduler/TUPipelineDAG.h"
+#include "Scheduler/SchedulerExecutors.h"
+#include "Scheduler/RingBuffer.h"
+#include "CommonLib/TypeDef.h"
+#endif
 
 //! \ingroup EncoderLib
 //! \{
@@ -1263,6 +1274,19 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
     return;
   }
 
+// Phase 4 (deferred): ENABLE_SCHEDULER_DISPATCH encoder pipeline hook
+// at this location in xIntraCodingTUBlock. Requires per-stage executors
+// with proper CABAC context initialization (m_CABACEstimator->getCtx())
+// before each executor dispatch. See SchedulerExecutors::execIntraTu.
+// To re-enable: uncomment the block below and add ENABLE_SCHEDULER_DISPATCH
+// guard around the includes at the top of this file.
+// The hook should:
+//   1. Check g_pScheduler && !g_schedulerActive
+//   2. Build DAG from CU's TUs (filter by compID)
+//   3. Set up per-WorkUnit IntraTuExecCtx with CABAC ctx snapshot
+//   4. Call g_pScheduler->submitModeTrial(cu)
+//   5. Clean up and return (scheduler handled all matching TUs)
+
   CodingStructure &cs             = *tu.cs;
   const CompArea      &area       = tu.blocks[compID];
   const SPS           &sps        = *cs.sps;
@@ -1332,6 +1356,19 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
       }
     }
   }
+#if ENABLE_SCHEDULER_TRACE
+  if (g_pSchedulerTrace)
+  {
+    int traceSize = area.width * area.height * sizeof(Pel);
+    if (traceSize > 4096) traceSize = 4096;
+    g_pSchedulerTrace->recordStageRaw(tu.idx, (uint8_t)Stage::INIT_PRED, (uint8_t)compID,
+      (int8_t)cu.qp, (uint8_t)area.width, (uint8_t)area.height, 0,
+      piReco.buf, traceSize);
+    g_pSchedulerTrace->recordStageRaw(tu.idx, (uint8_t)Stage::PREDICT, (uint8_t)compID,
+      (int8_t)cu.qp, (uint8_t)area.width, (uint8_t)area.height, 0,
+      piPred.buf, traceSize);
+  }
+#endif
   DTRACE( g_trace_ctx, D_PRED, "@(%4d,%4d) [%2dx%2d] IMode=%d\n", tu.lx(), tu.ly(), tu.lwidth(), tu.lheight(), CU::getFinalIntraMode(cu, chType) );
   const Slice &slice = *cs.slice;
   bool flag = cs.picHeader->lmcsEnabled && (slice.isIntra() || (!slice.isIntra() && reshapeData.getCTUFlag()));
@@ -1348,6 +1385,16 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
       piResi.subtract( piOrg, piPred );
     }
   }
+#if ENABLE_SCHEDULER_TRACE
+  if (g_pSchedulerTrace)
+  {
+    int traceSize = area.width * area.height * sizeof(Pel);
+    if (traceSize > 4096) traceSize = 4096;
+    g_pSchedulerTrace->recordStageRaw(tu.idx, (uint8_t)Stage::RESIDUAL, (uint8_t)compID,
+      (int8_t)cu.qp, (uint8_t)area.width, (uint8_t)area.height, 0,
+      piResi.buf, traceSize);
+  }
+#endif
 
   //===== transform and quantization =====
   //--- init rate estimation arrays for RDOQ ---

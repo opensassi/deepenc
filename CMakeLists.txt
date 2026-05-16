@@ -216,6 +216,10 @@ set( VVENC_ENABLE_ML_LIGHTGBM               OFF CACHE BOOL "Enable ML-guided CU 
 # HW pre-analysis via QuickSync metadata sidecar
 set( VVENC_ENABLE_HW_PREANALYSIS            OFF CACHE BOOL "Enable HW pre-analysis module (QuickSync metadata)" )
 
+# TU pipeline scheduler (experimental, Phase 1)
+set( VVENC_ENABLE_SCHEDULER_DISPATCH        OFF CACHE BOOL "Enable decomposed TU pipeline scheduler (default OFF)" )
+set( VVENC_ENABLE_SCHEDULER_TRACE           OFF CACHE BOOL "Enable scheduler trace capture (requires ENABLE_SCHEDULER_DISPATCH)" )
+
 # Training data generation via VVENC_TRAINING_OUT env var
 set( VVENC_ENABLE_AI_TRAINING               OFF CACHE BOOL "Enable per-CU training feature dump for LightGBM data generation" )
 
@@ -456,6 +460,18 @@ else()
     message( STATUS "VVENC_ENABLE_AI_TRAINING: OFF" )
 endif()
 
+# handle scheduler module
+if( VVENC_ENABLE_SCHEDULER_DISPATCH )
+    message( STATUS "VVENC_ENABLE_SCHEDULER_DISPATCH: ON" )
+    add_compile_definitions( ENABLE_SCHEDULER_DISPATCH=1 )
+    if( VVENC_ENABLE_SCHEDULER_TRACE )
+        message( STATUS "VVENC_ENABLE_SCHEDULER_TRACE: ON" )
+        add_compile_definitions( ENABLE_SCHEDULER_TRACE=1 )
+    endif()
+else()
+    message( STATUS "VVENC_ENABLE_SCHEDULER_DISPATCH: OFF" )
+endif()
+
 # handle rpath correctly
 if( VVENC_ENABLE_INSTALL )
   if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
@@ -502,6 +518,10 @@ endif()
 if( VVENC_ENABLE_HW_PREANALYSIS )
   add_subdirectory( "test/hw_preanalysis" )
   add_subdirectory( "test/hw_pipeline_bench" )
+endif()
+
+if( VVENC_ENABLE_SCHEDULER_DISPATCH )
+  add_subdirectory( "source/Lib/SchedulerBench" )
 endif()
 
 include( cmake/modules/vvencTests.cmake )

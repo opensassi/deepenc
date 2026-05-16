@@ -56,10 +56,15 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "CommonLib/MotionInfo.h"
 #include "CommonLib/Picture.h"
 #include "CommonLib/UnitTools.h"
-#include "CommonLib/Reshape.h"
 #include "CommonLib/dtrace_next.h"
 #include "CommonLib/dtrace_buffer.h"
+#include "CommonLib/Reshape.h"
 #include "CommonLib/TimeProfiler.h"
+#if ENABLE_SCHEDULER_TRACE
+#include "Scheduler/WorkUnit.h"
+#include "Scheduler/SchedulerTrace.h"
+#include "Scheduler/TUScheduler.h"
+#endif
 
 #include <math.h>
 
@@ -3692,6 +3697,19 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         // copy the original residual into the residual buffer
         csFull->getResiBuf(compArea).copyFrom(orgResiBuf.get(compID));
 
+#if ENABLE_SCHEDULER_TRACE
+        if (g_pSchedulerTrace)
+        {
+          PelBuf resiBuf = csFull->getResiBuf(compArea);
+          int traceSize = compArea.width * compArea.height * (int)sizeof(Pel);
+          if (traceSize > 4096) traceSize = 4096;
+          g_pSchedulerTrace->recordStageRaw(tu.idx, (uint8_t)Stage::RESIDUAL,
+            (uint8_t)compID, (int8_t)tu.cu->qp,
+            (uint8_t)compArea.width, (uint8_t)compArea.height,
+            tu.mtsIdx[compID],
+            resiBuf.buf, traceSize);
+        }
+#endif
 
         m_CABACEstimator->getCtx() = ctxStart;
         m_CABACEstimator->resetBits();

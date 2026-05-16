@@ -51,6 +51,16 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <stdio.h>
 #include <algorithm>
+#include <cstdlib>
+
+#if ENABLE_SCHEDULER_DISPATCH || ENABLE_SCHEDULER_TRACE
+#include "Scheduler/TUScheduler.h"
+#include "Scheduler/SchedulerTrace.h"
+#endif
+#if ENABLE_SCHEDULER_DISPATCH
+#include "Scheduler/SchedulerExecutors.h"
+#include "Utilities/NoMallocThreadPool.h"
+#endif
 
 #include "vvenc/version.h"
 #include "CommonLib/CommonDef.h"
@@ -129,6 +139,34 @@ int VVEncImpl::checkConfig( const vvenc_config& config )
 
 int VVEncImpl::init( vvenc_config* config )
 {
+#if ENABLE_SCHEDULER_DISPATCH
+  if (!g_pScheduler)
+  {
+    g_pScheduler = new TUScheduler();
+    if (g_pScheduler->init(nullptr, 8) < 0)
+    {
+      delete g_pScheduler;
+      g_pScheduler = nullptr;
+    }
+  }
+#endif
+
+#if ENABLE_SCHEDULER_TRACE
+  if (!g_pSchedulerTrace)
+  {
+    const char* pTraceFile = getenv("VVENC_SCHED_TRACE");
+    if (pTraceFile)
+    {
+      g_pSchedulerTrace = new SchedulerTrace();
+      if (g_pSchedulerTrace->init(pTraceFile) < 0)
+      {
+        delete g_pSchedulerTrace;
+        g_pSchedulerTrace = nullptr;
+      }
+    }
+  }
+#endif
+
   if( m_bInitialized ){ return VVENC_ERR_INITIALIZE; }
 
   if (nullptr == config)

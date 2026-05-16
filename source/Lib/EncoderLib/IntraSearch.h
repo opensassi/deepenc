@@ -66,6 +66,7 @@ class EncCu;
 /// encoder search class
 class IntraSearch : public IntraPrediction
 {
+  friend class SchedulerExecutors;
 private:
 
   struct ModeInfo

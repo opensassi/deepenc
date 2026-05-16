@@ -19,6 +19,7 @@
     "note": "allow",
     "sad-asm-debug-8": "allow",
     "scheduler-phase-1-9": "allow",
+    "scheduler-phase-4-cabac-12": "allow",
     "production-ready-11": "allow"
   },
   "mcp": {
