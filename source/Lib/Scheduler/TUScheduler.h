@@ -47,6 +47,8 @@ public:
                         void* pScratch, int scratchSize);
     int submitModeTrial(CodingUnit* pCu);
 
+    int executeWorkUnits(WorkUnit* pPool, int numUnits);
+
     int submitFrame(Slice& slice, Picture* pic);
     int advanceFrame();
 

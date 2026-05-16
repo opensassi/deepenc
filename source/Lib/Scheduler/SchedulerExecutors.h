@@ -10,6 +10,7 @@ namespace vvenc {
 
 struct WorkUnit;
 class IntraSearch;
+class TempCtx;
 
 struct IntraTuExecCtx
 {
@@ -21,6 +22,7 @@ struct IntraTuExecCtx
     uint32_t*        pNumSig;
     void*            pPred;
     bool             loadTr;
+    TempCtx*         pCtxStart;
 };
 
 class SchedulerExecutors

@@ -1274,18 +1274,60 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
     return;
   }
 
-// Phase 4 (deferred): ENABLE_SCHEDULER_DISPATCH encoder pipeline hook
-// at this location in xIntraCodingTUBlock. Requires per-stage executors
-// with proper CABAC context initialization (m_CABACEstimator->getCtx())
-// before each executor dispatch. See SchedulerExecutors::execIntraTu.
-// To re-enable: uncomment the block below and add ENABLE_SCHEDULER_DISPATCH
-// guard around the includes at the top of this file.
-// The hook should:
-//   1. Check g_pScheduler && !g_schedulerActive
-//   2. Build DAG from CU's TUs (filter by compID)
-//   3. Set up per-WorkUnit IntraTuExecCtx with CABAC ctx snapshot
-//   4. Call g_pScheduler->submitModeTrial(cu)
-//   5. Clean up and return (scheduler handled all matching TUs)
+#if ENABLE_SCHEDULER_DISPATCH
+  extern TUScheduler* g_pScheduler;
+  extern bool g_schedulerActive;
+  if (g_pScheduler && !g_schedulerActive)
+  {
+    g_schedulerActive = true;
+    CodingUnit* pCu = tu.cu;
+    CodingStructure& lCs = *tu.cs;
+
+    int poolSize = TUPipelineDAG::estimatePoolSize(pCu);
+    if (poolSize > 0)
+    {
+      WorkUnit* pPool = new WorkUnit[poolSize]();
+      int numUnits = 0;
+      TUPipelineDAG::build(pCu, pPool, poolSize, numUnits);
+
+      TempCtx* pCtxStart = new TempCtx(m_CtxCache, m_CABACEstimator->getCtx());
+
+      for (int i = 0; i < numUnits; i++)
+      {
+        pPool[i].m_pfnExec = SchedulerExecutors::execIntraTu;
+        IntraTuExecCtx* ctx = new IntraTuExecCtx();
+        memset(ctx, 0, sizeof(IntraTuExecCtx));
+        ctx->pSearch = this;
+        ctx->pCtxStart = pCtxStart;
+        if (pPool[i].m_tuId < (uint32_t)lCs.tus.size())
+        {
+          ctx->pTu = lCs.tus[pPool[i].m_tuId];
+        }
+        ctx->compId = pPool[i].m_compId;
+        ctx->loadTr = true;
+        pPool[i].m_pCtx = ctx;
+      }
+
+      g_pScheduler->executeWorkUnits(pPool, numUnits);
+
+      for (int i = 0; i < numUnits; i++)
+      {
+        if (pPool[i].m_pDependents)
+        {
+          // xOnComplete already freed these; just null-check to be safe
+        }
+        if (pPool[i].m_pCtx)
+        {
+          delete (IntraTuExecCtx*)pPool[i].m_pCtx;
+        }
+      }
+      delete[] pPool;
+      delete pCtxStart;
+    }
+    g_schedulerActive = false;
+    return;
+  }
+#endif
 
   CodingStructure &cs             = *tu.cs;
   const CompArea      &area       = tu.blocks[compID];

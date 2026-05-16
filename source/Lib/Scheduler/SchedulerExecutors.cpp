@@ -7,6 +7,7 @@
 
 #include "EncoderLib/IntraSearch.h"
 #include "CommonLib/CodingStructure.h"
+#include "CommonLib/Contexts.h"
 #include "CommonLib/Unit.h"
 #include "CommonLib/TypeDef.h"
 
@@ -21,6 +22,13 @@ bool SchedulerExecutors::execIntraTu(WorkUnit* pWu, void* pScratch)
 
     IntraTuExecCtx* ctx = (IntraTuExecCtx*)pWu->m_pCtx;
     if (!ctx->pSearch || !ctx->pTu) return false;
+
+    // Restore CABAC context to snapshot taken before DAG build
+    if (ctx->pCtxStart)
+    {
+        ctx->pSearch->m_CABACEstimator->getCtx() = *ctx->pCtxStart;
+        ctx->pSearch->m_CABACEstimator->resetBits();
+    }
 
     TransformUnit* pTu = (TransformUnit*)ctx->pTu;
     ComponentID compId = (ComponentID)ctx->compId;

@@ -199,6 +199,21 @@ int TUScheduler::submitModeTrial(CodingUnit* pCu)
 
     return 0;
 }
+
+int TUScheduler::executeWorkUnits(WorkUnit* pPool, int numUnits)
+{
+    if (!pPool || numUnits < 1) return -1;
+
+    int remaining = numUnits;
+    while (remaining > 0)
+    {
+        int completed = 0;
+        int ret = xSubmitReady(pPool, numUnits, completed);
+        if (ret < 0) break;
+        remaining -= completed;
+    }
+    return 0;
+}
 #endif
 
 int TUScheduler::xSubmitReady(WorkUnit* pUnits, int numUnits, int& completed)
