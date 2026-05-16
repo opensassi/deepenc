@@ -9,5 +9,9 @@
       "ml-models/**",
       "ml-models-v2"
     ]
+  },
+  "skills": {
+    "opensassi": "allow",
+    "scheduler-completion-13": "allow"
   }
 }
