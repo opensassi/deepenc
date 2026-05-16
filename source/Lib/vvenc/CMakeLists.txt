@@ -210,11 +210,25 @@ if( MSVC )
   set( RESOURCE_FILE ${LIB_NAME}.rc )
 endif()
 
+if( VVENC_ENABLE_HW_PREANALYSIS )
+  # Add HWPreAnalysis source files directly
+  list( APPEND SRC_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../HWPreAnalysis/HWPreAnalyzer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../HWPreAnalysis/HWBitstreamParser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../HWPreAnalysis/HWCuPartitionAnalyzer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../HWPreAnalysis/HWPreAnalysisStage.cpp"
+  )
+endif()
+
 add_library( ${LIB_NAME} ${SRC_FILES} ${ASM_SRC_FILES} $<$<TARGET_EXISTS:${LIB_NAME}_x86_simd>:$<TARGET_OBJECTS:${LIB_NAME}_x86_simd>> $<$<TARGET_EXISTS:${LIB_NAME}_arm_simd>:$<TARGET_OBJECTS:${LIB_NAME}_arm_simd>> ${INC_FILES} ${NATVIS_FILES} ${RESOURCE_FILE} )
 
 target_compile_definitions( ${LIB_NAME} PUBLIC $<$<STREQUAL:$<TARGET_PROPERTY:${LIB_NAME},TYPE>,SHARED_LIBRARY>:${LIB_NAME_UC}_DYN_LINK> )
 
 target_include_directories( ${LIB_NAME} SYSTEM INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../include> $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}> )
+
+if( VVENC_ENABLE_HW_PREANALYSIS )
+  target_compile_definitions( ${LIB_NAME} PRIVATE VVENC_ENABLE_HW_PREANALYSIS=1 )
+endif()
 
 if( CMAKE_COMPILER_IS_GNUCC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0 )
   target_compile_options( ${LIB_NAME} PRIVATE $<$<CXX_COMPILER_ID:GNU>: -Wno-array-bounds> )
@@ -233,6 +247,18 @@ endif()
 if( VVENC_ENABLE_ML_LIGHTGBM AND TARGET vvenc_ml )
   target_link_libraries( ${LIB_NAME} PRIVATE vvenc_ml )
   target_compile_definitions( ${LIB_NAME} PRIVATE VVENC_ENABLE_ML_LIGHTGBM=1 )
+endif()
+
+if( VVENC_ENABLE_HW_PREANALYSIS )
+  # Add HWPreAnalysis source files directly (avoids install-export issues with separate lib)
+  set( HW_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../HWPreAnalysis" )
+  list( APPEND SRC_FILES
+    "${HW_DIR}/HWPreAnalyzer.cpp"
+    "${HW_DIR}/HWBitstreamParser.cpp"
+    "${HW_DIR}/HWCuPartitionAnalyzer.cpp"
+    "${HW_DIR}/HWPreAnalysisStage.cpp"
+  )
+  target_compile_definitions( ${LIB_NAME} PRIVATE VVENC_ENABLE_HW_PREANALYSIS=1 )
 endif()
 
 if( CMAKE_USE_PTHREADS_INIT )

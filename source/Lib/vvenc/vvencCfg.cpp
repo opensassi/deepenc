@@ -717,6 +717,8 @@ VVENC_DECL void vvenc_config_default(vvenc_config *c )
   memset( c->m_mlModelDir, 0, sizeof(c->m_mlModelDir) );
   memset( c->m_trainingOutputFile, 0, sizeof(c->m_trainingOutputFile) );
   memset( c->m_feedbackOutputFile, 0, sizeof(c->m_feedbackOutputFile) );
+  c->m_hwPreAnalysis = 0;
+  memset( c->m_hwMetadataPath, 0, sizeof(c->m_hwMetadataPath) );
 
   // init default preset
   vvenc_init_preset( c, vvencPresetMode::VVENC_MEDIUM );

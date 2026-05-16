@@ -1,0 +1,5 @@
+if( VVENC_ENABLE_HW_PREANALYSIS )
+    add_executable( hw_bench HWPreAnalysisBench.cpp )
+    target_link_libraries( hw_bench PRIVATE vvenc_hw )
+    set_target_properties( hw_bench PROPERTIES FOLDER bench )
+endif()

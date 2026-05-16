@@ -48,6 +48,9 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "PreProcess.h"
 #include "BitAllocation.h"
+#if VVENC_ENABLE_HW_PREANALYSIS
+#include "HWPreAnalysis/HWPreAnalyzer.h"
+#endif
 
 //! \ingroup EncoderLib
 //! \{
@@ -126,6 +129,24 @@ void PreProcess::processPictures( const PicList& picList, AccessUnitList& auList
       {
         // detect scene cut in gop and adapt slice type
         xDetectSTA( pic, picList );
+
+#if VVENC_ENABLE_HW_PREANALYSIS
+        // Override scene cut with HW metadata if available
+        {
+          HWPreAnalyzer* hw = HWPreAnalyzer::getInstance();
+          if (hw && m_encCfg->m_hwPreAnalysis && hw->isInitialized())
+          {
+            bool isHwCut = false;
+            if (hw->getSceneCut(pic->poc, isHwCut) == 0 && isHwCut)
+            {
+              PicShared* ps = pic->m_picShared;
+              ps->m_gopEntry.m_sliceType = 'I';
+              ps->m_gopEntry.m_scType    = SCT_TL0_SCENE_CUT;
+              ps->m_picMemorySTA         = 1;
+            }
+          }
+        }
+#endif
 
         // disable temporal downsampling for gop with scene cut
         if( m_doTempDown && pic->gopEntry->m_scType == SCT_TL0_SCENE_CUT )

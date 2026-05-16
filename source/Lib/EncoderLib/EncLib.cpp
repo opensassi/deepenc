@@ -57,6 +57,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "PreProcess.h"
 #include "EncGOP.h"
 #include "CommonLib/x86/CommonDefX86.h"
+#if VVENC_ENABLE_HW_PREANALYSIS
+#include "HWPreAnalysis/HWPreAnalysisStage.h"
+#endif
 
 //! \ingroup EncoderLib
 //! \{
@@ -238,6 +241,21 @@ void EncLib::initPass( int pass, const char* statsFName )
   }
   m_maxNumPicShared = 0;
 
+#if VVENC_ENABLE_HW_PREANALYSIS
+  // HW pre-analysis stage (attaches metadata before PreProcess)
+    {
+      HWPreAnalyzer* hw = HWPreAnalyzer::getInstance();
+      if (hw && m_encCfg.m_hwPreAnalysis && hw->isInitialized())
+      {
+        HWPreAnalysisStage* hwStage = new HWPreAnalysisStage(msg, hw);
+        hwStage->initStage(m_encCfg, 1, -m_encCfg.m_leadFrames, true, true, false);
+        m_encStages.push_back(hwStage);
+        m_hwStage = hwStage;
+        m_maxNumPicShared += 1;
+      }
+    }
+#endif
+
   // pre processing
   m_preProcess = new PreProcess( msg );
   m_preProcess->initStage( m_encCfg, 1, -m_encCfg.m_leadFrames, true, true, false );
@@ -331,6 +349,13 @@ void EncLib::xUninitLib()
     delete m_gopEncoder;
     m_gopEncoder = nullptr;
   }
+#if VVENC_ENABLE_HW_PREANALYSIS
+  if (m_hwStage)
+  {
+    delete m_hwStage;
+    m_hwStage = nullptr;
+  }
+#endif
   m_encStages.clear();
 
   for( auto picShared : m_picSharedList )

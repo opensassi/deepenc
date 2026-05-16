@@ -114,6 +114,9 @@ private:
 #if VVENC_ENABLE_ML_LIGHTGBM
   FASTSplitPredictor*  m_pMLPredictor;
 #endif
+#if VVENC_ENABLE_HW_PREANALYSIS
+  EncStage*            m_hwStage = nullptr;
+#endif
 
 public:
   EncLib( MsgLog& logger );

@@ -586,6 +586,7 @@ int parse( int argc, char* argv[], vvenc_config* c, std::ostream& rcOstr )
   IStreamToArr<char>                toTraceRule                   ( &c->m_traceRule[0], VVENC_MAX_STRING_LEN  );
   IStreamToArr<char>                toTraceFile                   ( &c->m_traceFile[0], VVENC_MAX_STRING_LEN  );
   IStreamToArr<char>                toMLModelDir                  ( &c->m_mlModelDir[0], VVENC_MAX_STRING_LEN );
+  IStreamToArr<char>                toHwMetadataPath              ( &c->m_hwMetadataPath[0], VVENC_MAX_STRING_LEN );
   IStreamToArr<char>                toSummaryOutFilename          ( &c->m_summaryOutFilename[0], VVENC_MAX_STRING_LEN  );
   IStreamToArr<char>                toSummaryPicFilenameBase      ( &c->m_summaryPicFilenameBase[0], VVENC_MAX_STRING_LEN  );
 
@@ -694,6 +695,8 @@ int parse( int argc, char* argv[], vvenc_config* c, std::ostream& rcOstr )
     ("ml-thns",                                         c->m_mlThNs,                                           "ML no-skip threshold (default 0.25). If max prediction < thns, CU encodes without splitting")
     ("ml-topk",                                         c->m_mlTopK,                                           "ML top-K candidates to evaluate via RDO (default 3)")
     ("ml-model-dir",                                    toMLModelDir,                                           "Path to LightGBM model directory")
+    ("hw-pre-analysis",                                 c->m_hwPreAnalysis,                                      "HW pre-analysis mode (0=off, 1=file-backed)")
+    ("hw-metadata",                                     toHwMetadataPath,                                        "Path to HW pre-analysis metadata CSV")
     ("intraperiod,-ip",                                 c->m_IntraPeriod,                                    "intra period in frames (0: specify intra period in seconds instead, see -refreshsec)")
     ;
   }

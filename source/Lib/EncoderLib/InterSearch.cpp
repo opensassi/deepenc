@@ -48,6 +48,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "InterSearch.h"
 #include "EncModeCtrl.h"
 #include "EncLib.h"
+#if VVENC_ENABLE_HW_PREANALYSIS
+#include "HWPreAnalysis/HWPreAnalyzer.h"
+#endif
 #include "CommonLib/CommonDef.h"
 #include "CommonLib/Rom.h"
 #include "CommonLib/MotionInfo.h"
@@ -2043,6 +2046,34 @@ void InterSearch::xMotionEstimation(CodingUnit& cu, CPelUnitBuf& origBuf, RefPic
   m_pcRdCost->setPredictor( predQuarter );
   m_pcRdCost->setCostScale(2);
 
+#if VVENC_ENABLE_HW_PREANALYSIS
+  // Seed TZ search with HW MV field
+  if (!bBi)
+  {
+    HWPreAnalyzer* hw = HWPreAnalyzer::getInstance();
+    if (hw && m_pcEncCfg->m_hwPreAnalysis && hw->isInitialized())
+    {
+      const HWMV* mvGrid = nullptr;
+      int gridW = 0, gridH = 0;
+      if (hw->getMVField(cu.slice->poc, mvGrid, gridW, gridH) == 0 && mvGrid)
+      {
+        int cx = cu.lumaPos().x + cu.lumaSize().width / 2;
+        int cy = cu.lumaPos().y + cu.lumaSize().height / 2;
+        int gx = cx / 16;
+        int gy = cy / 16;
+        if (gx >= 0 && gx < gridW && gy >= 0 && gy < gridH)
+        {
+          int idx = gy * gridW + gx;
+          Mv hwMv(mvGrid[idx].x, mvGrid[idx].y);
+          Mv candMv[1] = { hwMv };
+          (void)candMv;
+          m_BlkUniMvInfoBuffer->insertUniMvCands(cu.Y(), candMv);
+        }
+      }
+    }
+  }
+#endif
+
   //  Do integer search
   if( m_motionEstimationSearchMethod == VVENC_MESEARCH_FULL || bBi )
   {
@@ -2102,8 +2133,42 @@ void InterSearch::xMotionEstimation(CodingUnit& cu, CPelUnitBuf& origBuf, RefPic
   else
   {
     cStruct.subShiftMode = ( m_pcEncCfg->m_fastInterSearchMode == VVENC_FASTINTERSEARCH_MODE1 || m_pcEncCfg->m_fastInterSearchMode == VVENC_FASTINTERSEARCH_MODE3 ) ? 1 : 0;
-    rcMv = rcMvPred;
-    xPatternSearchFast(cu, refPicList, iRefIdxPred, cStruct, rcMv, ruiCost );
+
+#if VVENC_ENABLE_HW_PREANALYSIS
+    // If HW MV is available, try it as TZ search start point
+    Mv hwSeed = rcMvPred;
+    bool useHwSeed = false;
+    HWPreAnalyzer* hw = HWPreAnalyzer::getInstance();
+    if (hw && m_pcEncCfg->m_hwPreAnalysis && hw->isInitialized())
+    {
+      const HWMV* mvGrid = nullptr;
+      int gridW = 0, gridH = 0;
+      if (hw->getMVField(cu.slice->poc, mvGrid, gridW, gridH) == 0 && mvGrid)
+      {
+        int cx = cu.lumaPos().x + cu.lumaSize().width / 2;
+        int cy = cu.lumaPos().y + cu.lumaSize().height / 2;
+        int gx = cx / 16, gy = cy / 16;
+        if (gx >= 0 && gx < gridW && gy >= 0 && gy < gridH)
+        {
+          int idx = gy * gridW + gx;
+          hwSeed = Mv(mvGrid[idx].x, mvGrid[idx].y);
+          useHwSeed = true;
+        }
+      }
+    }
+    if (useHwSeed)
+    {
+      // Run TZ search from HW seed position
+      rcMv = hwSeed;
+      rcMv.changePrecision(MV_PRECISION_INTERNAL, MV_PRECISION_INT);
+      xPatternSearchFast(cu, refPicList, iRefIdxPred, cStruct, rcMv, ruiCost );
+    }
+    else
+#endif
+    {
+      rcMv = rcMvPred;
+      xPatternSearchFast(cu, refPicList, iRefIdxPred, cStruct, rcMv, ruiCost );
+    }
     relatedCU.setMv( refPicList, iRefIdxPred, rcMv );
   }
 

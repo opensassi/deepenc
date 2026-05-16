@@ -213,6 +213,9 @@ set( VVENC_ENABLE_THIRDPARTY_JSON           ON  CACHE STRING "Enable use of thir
 # ML-guided encoding via LightGBM
 set( VVENC_ENABLE_ML_LIGHTGBM               OFF CACHE BOOL "Enable ML-guided CU split decisions via LightGBM" )
 
+# HW pre-analysis via QuickSync metadata sidecar
+set( VVENC_ENABLE_HW_PREANALYSIS            OFF CACHE BOOL "Enable HW pre-analysis module (QuickSync metadata)" )
+
 # Training data generation via VVENC_TRAINING_OUT env var
 set( VVENC_ENABLE_AI_TRAINING               OFF CACHE BOOL "Enable per-CU training feature dump for LightGBM data generation" )
 
@@ -480,6 +483,8 @@ endif()
 set( VVENC_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/source/Lib" )
 
 add_subdirectory( "source/Lib/MLTools" )
+add_subdirectory( "source/Lib/HWPreAnalysis" )
+add_subdirectory( "source/Lib/HWPreAnalysisBench" )
 add_subdirectory( "source/Lib/vvenc" )
 add_subdirectory( "source/App/vvencapp" )
 add_subdirectory( "source/App/vvencFFapp" )
@@ -492,6 +497,11 @@ endif()
 
 if( VVENC_ENABLE_ML_LIGHTGBM )
   add_subdirectory( "test/vvenc_mltest" )
+endif()
+
+if( VVENC_ENABLE_HW_PREANALYSIS )
+  add_subdirectory( "test/hw_preanalysis" )
+  add_subdirectory( "test/hw_pipeline_bench" )
 endif()
 
 include( cmake/modules/vvencTests.cmake )

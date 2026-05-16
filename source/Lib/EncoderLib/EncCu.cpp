@@ -50,6 +50,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #if VVENC_ENABLE_ML_LIGHTGBM
 #include "MLTools/CUFeatureExtractor.h"
 #endif
+#if VVENC_ENABLE_HW_PREANALYSIS
+#include "HWPreAnalysis/HWPreAnalyzer.h"
+#endif
 
 #include "EncLib.h"
 #include "Analyze.h"
@@ -748,6 +751,8 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
   FASTSplitPredictor::SplitType vvencMlPred = FASTSplitPredictor::NO_SPLIT;
   bool vvencMlPredValid = false;
 #endif
+#if VVENC_ENABLE_HW_PREANALYSIS
+#endif
 
   Slice&   slice      = *tempCS->slice;
   const PPS &pps      = *tempCS->pps;
@@ -1055,7 +1060,76 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
     }
 #endif
     //////////////////////////////////////////////////////////////////////////
-    // ML-guided split prediction (Taabane 2024 Algorithm 1 — Top-N candidates)
+    // HW pre-analysis split hint (at CTU root level only)
+#if VVENC_ENABLE_HW_PREANALYSIS
+
+    // HW pre-analysis split hint (all depths, non-boundary, luma)
+    if (partitioner.currQtDepth >= 1 && !isBoundary && isLuma(partitioner.chType))
+    {
+      HWPreAnalyzer* hw = HWPreAnalyzer::getInstance();
+      if (hw && m_pcEncCfg->m_hwPreAnalysis && hw->isInitialized())
+      {
+        int cuSizeMb = (int)(partitioner.currArea().lwidth() / 16);
+        if (cuSizeMb < 1) cuSizeMb = 1;
+
+        CUSplitHint hint;
+        if (hw->getCUSplitHint(uiLPelX / 16, uiTPelY / 16, cuSizeMb, hint) == 0
+            && hint.m_fConfidence >= 0.6f)
+        {
+          // noSplit: skip split testing at CUs >= 16x16 with high confidence
+          if (hint.m_bNoSplit && hint.m_fConfidence >= 0.6f
+              && partitioner.currArea().lwidth() >= 16
+              && partitioner.currArea().lheight() >= 16)
+          {
+            m_modeCtrl.setMLSkipSplit(true);
+          }
+          // forceSplit: try HW-recommended split at CU >= 32x32, depth <= 2
+          if (hint.m_bForceSplit && hint.m_fConfidence >= 0.9f
+              && partitioner.currArea().lwidth() >= 32
+              && partitioner.currArea().lheight() >= 32
+              && partitioner.currQtDepth <= 2)
+          {
+            PartSplit partSplit;
+            switch (hint.m_eSplitType)
+            {
+            case CU_SPLIT_QT:   partSplit = CU_QUAD_SPLIT; break;
+            case CU_SPLIT_BT_H: partSplit = CU_HORZ_SPLIT; break;
+            case CU_SPLIT_BT_V: partSplit = CU_VERT_SPLIT; break;
+            case CU_SPLIT_TT_H: partSplit = CU_TRIH_SPLIT; break;
+            case CU_SPLIT_TT_V: partSplit = CU_TRIV_SPLIT; break;
+            default:            partSplit = CU_DONT_SPLIT; break;
+            }
+
+            if (partSplit != CU_DONT_SPLIT && partitioner.canSplit(partSplit, *tempCS))
+            {
+              EncTestMode hwMode;
+              switch (partSplit)
+              {
+              case CU_QUAD_SPLIT: hwMode = { ETM_SPLIT_QT,   ETO_STANDARD, qp, false }; break;
+              case CU_HORZ_SPLIT: hwMode = { ETM_SPLIT_BT_H, ETO_STANDARD, qp, false }; break;
+              case CU_VERT_SPLIT: hwMode = { ETM_SPLIT_BT_V, ETO_STANDARD, qp, false }; break;
+              case CU_TRIH_SPLIT: hwMode = { ETM_SPLIT_TT_H, ETO_STANDARD, qp, false }; break;
+              case CU_TRIV_SPLIT: hwMode = { ETM_SPLIT_TT_V, ETO_STANDARD, qp, false }; break;
+              default:            hwMode = { ETM_INVALID,    ETO_STANDARD, qp, false }; break;
+              }
+
+              if (hwMode.type != ETM_INVALID)
+              {
+                xCheckModeSplit(tempCS, bestCS, partitioner, hwMode);
+                if (bestCS->cost < MAX_DOUBLE)
+                {
+                  m_modeCtrl.setMLSkipSplit(true);
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+#endif
+    //////////////////////////////////////////////////////////////////////////
+    // ML-guided split prediction (Taabane 2024 Algorithm 1 — Top-N)
 #if VVENC_ENABLE_ML_LIGHTGBM
     FASTSplitPredictor* mlPredictor = FASTSplitPredictor::getInstance();
     if (mlPredictor && m_pcEncCfg->m_mlEnable && mlPredictor->isInitialized())

@@ -48,6 +48,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "EncGOP.h"
 #include "CommonLib/SEI.h"
 #include "CommonLib/UnitTools.h"
+#if VVENC_ENABLE_HW_PREANALYSIS
+#include "HWPreAnalysis/HWPreAnalyzer.h"
+#include <cmath>
+#endif
 #include "CommonLib/dtrace_codingstruct.h"
 #include "CommonLib/dtrace_buffer.h"
 #include "CommonLib/TimeProfiler.h"
@@ -618,6 +622,27 @@ void EncGOP::xEncodePicture( Picture* pic, EncPicture* picEncoder )
     pic->picInitialLambda = -1.0;
 
     m_pcRateCtrl->initRateControlPic( *pic, pic->slices[0], pic->picInitialQP, pic->picInitialLambda );
+
+#if VVENC_ENABLE_HW_PREANALYSIS
+    // Override initial QP with HW frame complexity if available
+    {
+      HWPreAnalyzer* hw = HWPreAnalyzer::getInstance();
+      if (hw && m_pcEncCfg->m_hwPreAnalysis && hw->isInitialized())
+      {
+        float complexity = 1.0f;
+        if (hw->getFrameComplexity(pic->poc, complexity) == 0 && complexity > 0.01f)
+        {
+          int qpDelta = (int)(-3.0f * std::log2(complexity) + 0.5f);
+          qpDelta = std::max(-6, std::min(6, qpDelta));
+          if (qpDelta != 0)
+          {
+            pic->picInitialQP = std::max(0, std::min(MAX_QP, pic->picInitialQP + qpDelta));
+            pic->picInitialLambda *= std::pow(2.0, qpDelta / 3.0);
+          }
+        }
+      }
+    }
+#endif
   }
 
   if( pic->isSceneCutGOP && !pic->isSceneCutCheckAdjQP && !pic->gopEntry->m_isStartOfGop && m_rcap.gopAdaptedQPAdj )

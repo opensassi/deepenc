@@ -54,6 +54,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #if VVENC_ENABLE_ML_LIGHTGBM
 #include "MLTools/FASTSplitPredictor.h"
 #endif
+#if VVENC_ENABLE_HW_PREANALYSIS
+#include "HWPreAnalysis/HWPreAnalyzer.h"
+#endif
 #include "Utilities/MsgLog.h"
 
 namespace vvenc {
@@ -151,6 +154,9 @@ private:
 
 #if VVENC_ENABLE_ML_LIGHTGBM
   FASTSplitPredictor*    m_pMLPredictor = nullptr;
+#endif
+#if VVENC_ENABLE_HW_PREANALYSIS
+  HWPreAnalyzer*         m_pHWPreAnalyzer = nullptr;
 #endif
 
   MsgLog                 msg;

@@ -751,6 +751,10 @@ typedef struct vvenc_config
   // ML feedback (VVENC_ENABLE_ML_LIGHTGBM)
   char                m_feedbackOutputFile[VVENC_MAX_STRING_LEN]; // path for VVENC_ML_FEEDBACK CSV output (empty = disabled)
 
+  // HW pre-analysis (QuickSync metadata, VVENC_ENABLE_HW_PREANALYSIS)
+  int                 m_hwPreAnalysis;                     // 0=off, 1=on (default: 0)
+  char                m_hwMetadataPath[VVENC_MAX_STRING_LEN]; // path to hw_metadata.csv
+
   // trace rules
   bool                m_listTracingChannels;
   char                m_traceRule[VVENC_MAX_STRING_LEN];

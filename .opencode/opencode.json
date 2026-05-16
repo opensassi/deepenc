@@ -18,7 +18,8 @@
     "hw-preanalysis-10": "allow",
     "note": "allow",
     "sad-asm-debug-8": "allow",
-    "scheduler-phase-1-9": "allow"
+    "scheduler-phase-1-9": "allow",
+    "production-ready-11": "allow"
   },
   "mcp": {
     "playwright": {

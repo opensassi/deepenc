@@ -228,6 +228,26 @@ int VVEncImpl::init( vvenc_config* config )
   }
 #endif
 
+#if VVENC_ENABLE_HW_PREANALYSIS
+  if (m_cVVEncCfg.m_hwPreAnalysis)
+  {
+    m_pHWPreAnalyzer = new HWPreAnalyzer();
+    int ret = m_pHWPreAnalyzer->init(std::string(m_cVVEncCfg.m_hwMetadataPath));
+    if (ret == 0)
+    {
+      HWPreAnalyzer::setInstance(m_pHWPreAnalyzer);
+      msg.log(VVENC_INFO, "[HW] Pre-analysis metadata loaded from %s\n", m_cVVEncCfg.m_hwMetadataPath);
+    }
+    else
+    {
+      msg.log(VVENC_WARNING, "[HW] Failed to load metadata from %s (ret=%d), HW disabled\n",
+              m_cVVEncCfg.m_hwMetadataPath, ret);
+      delete m_pHWPreAnalyzer;
+      m_pHWPreAnalyzer = nullptr;
+    }
+  }
+#endif
+
   m_bInitialized = true;
   m_eState       = INTERNAL_STATE_INITIALIZED;
   return VVENC_OK;
@@ -297,6 +317,16 @@ int VVEncImpl::uninit()
     m_pMLPredictor->release();
     delete m_pMLPredictor;
     m_pMLPredictor = nullptr;
+  }
+#endif
+
+#if VVENC_ENABLE_HW_PREANALYSIS
+  if (m_pHWPreAnalyzer)
+  {
+    HWPreAnalyzer::setInstance(nullptr);
+    m_pHWPreAnalyzer->uninit();
+    delete m_pHWPreAnalyzer;
+    m_pHWPreAnalyzer = nullptr;
   }
 #endif
 
