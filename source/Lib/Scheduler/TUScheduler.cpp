@@ -146,6 +146,7 @@ int TUScheduler::submitModeTrial(const MockTU* pTus, int numTus,
     }
 
     int remaining = numUnits;
+    int prevRemaining = remaining;
 
     while (remaining > 0)
     {
@@ -153,6 +154,11 @@ int TUScheduler::submitModeTrial(const MockTU* pTus, int numTus,
         ret = xSubmitReady(m_pWorkPool, numUnits, completed);
         if (ret < 0) break;
         remaining -= completed;
+        if (remaining == prevRemaining && completed == 0)
+        {
+            break;
+        }
+        prevRemaining = remaining;
     }
 
     return 0;
@@ -188,6 +194,7 @@ int TUScheduler::submitModeTrial(CodingUnit* pCu)
     }
 
     int remaining = numUnits;
+    int prevRemaining = remaining;
 
     while (remaining > 0)
     {
@@ -195,26 +202,37 @@ int TUScheduler::submitModeTrial(CodingUnit* pCu)
         ret = xSubmitReady(m_pWorkPool, numUnits, completed);
         if (ret < 0) break;
         remaining -= completed;
+        if (remaining == prevRemaining && completed == 0)
+        {
+            break;
+        }
+        prevRemaining = remaining;
     }
 
     return 0;
 }
+#endif
 
 int TUScheduler::executeWorkUnits(WorkUnit* pPool, int numUnits)
 {
     if (!pPool || numUnits < 1) return -1;
 
     int remaining = numUnits;
+    int prevRemaining = remaining;
     while (remaining > 0)
     {
         int completed = 0;
         int ret = xSubmitReady(pPool, numUnits, completed);
         if (ret < 0) break;
         remaining -= completed;
+        if (remaining == prevRemaining && completed == 0)
+        {
+            break;
+        }
+        prevRemaining = remaining;
     }
     return 0;
 }
-#endif
 
 int TUScheduler::xSubmitReady(WorkUnit* pUnits, int numUnits, int& completed)
 {

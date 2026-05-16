@@ -522,6 +522,9 @@ endif()
 
 if( VVENC_ENABLE_SCHEDULER_DISPATCH )
   add_subdirectory( "source/Lib/SchedulerBench" )
+  if( NOT BUILD_SHARED_LIBS )
+    add_subdirectory( "test/scheduler_test" )
+  endif()
 endif()
 
 include( cmake/modules/vvencTests.cmake )
