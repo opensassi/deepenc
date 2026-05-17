@@ -4,21 +4,21 @@
 
 #include "TUPipelineDAG.h"
 #include "WorkUnit.h"
+#include "SchedulerExecutors.h"
+#include "TuStageData.h"
 
 #include "CommonLib/CodingStructure.h"
 #include "CommonLib/Unit.h"
 
 namespace vvenc {
 
-static constexpr int STAGES_PER_COMPONENT = 7;
+static constexpr int STAGES_PER_COMPONENT = 5;
 
 static Stage s_componentStages[STAGES_PER_COMPONENT] =
 {
     Stage::INIT_PRED,
-    Stage::PREDICT,
     Stage::RESIDUAL,
     Stage::FWD_XFORM,
-    Stage::QUANT_FILL,
     Stage::INV_XFORM,
     Stage::RECONSTRUCT
 };
@@ -75,41 +75,28 @@ int TUPipelineDAG::build(CodingUnit* pCu,
                 pWu->m_qp            = (int8_t)pCu->qp;
                 pWu->m_mtsIdx        = (uint8_t)pTu->mtsIdx[c];
                 pWu->m_bCbf          = pTu->cbf[c] ? true : false;
-                pWu->m_spatialDepMask = 0;
-                pWu->m_ctuRsAddr     = 0;
-                pWu->m_ctuPosX       = 0;
-                pWu->m_ctuPosY       = 0;
-                pWu->m_pDependents   = nullptr;
-                pWu->m_numDependents = 0;
-                pWu->m_pInputBuf     = nullptr;
-                pWu->m_pOutputBuf    = nullptr;
-                pWu->m_pScratch      = nullptr;
-                pWu->m_pfnExec       = nullptr;
+                pWu->m_spatialDepMask  = 0;
+                pWu->m_ctuRsAddr      = 0;
+                pWu->m_ctuPosX        = 0;
+                pWu->m_ctuPosY        = 0;
+                pWu->m_numDependents  = 0;
+                pWu->m_pInputBuf      = nullptr;
+                pWu->m_pOutputBuf     = nullptr;
+                pWu->m_pScratch       = nullptr;
+                pWu->m_pfnExec        = nullptr;
 
                 if (pPrev)
                 {
-                    WorkUnit** oldDeps = pPrev->m_pDependents;
-                    int oldNum = pPrev->m_numDependents;
-                    WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
-                    for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
-                    newDeps[oldNum] = pWu;
-                    delete[] oldDeps;
-                    pPrev->m_pDependents = newDeps;
-                    pPrev->m_numDependents = oldNum + 1;
+                    CHECK(pPrev->m_numDependents >= WorkUnit::MAX_DEPS, "WorkUnit dependency overflow");
+                    pPrev->m_pDependents[pPrev->m_numDependents++] = pWu;
                     pWu->m_depCount.fetch_add(1, std::memory_order_acq_rel);
                 }
 
                 if (s == 0 && pLastInTu)
                 {
+                    CHECK(pLastInTu->m_numDependents >= WorkUnit::MAX_DEPS, "WorkUnit dependency overflow");
+                    pLastInTu->m_pDependents[pLastInTu->m_numDependents++] = pWu;
                     pWu->m_depCount.fetch_add(1, std::memory_order_acq_rel);
-                    WorkUnit** oldDeps = pLastInTu->m_pDependents;
-                    int oldNum = pLastInTu->m_numDependents;
-                    WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
-                    for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
-                    newDeps[oldNum] = pWu;
-                    delete[] oldDeps;
-                    pLastInTu->m_pDependents = newDeps;
-                    pLastInTu->m_numDependents = oldNum + 1;
                 }
 
                 pPrev = pWu;
@@ -157,23 +144,16 @@ int TUPipelineDAG::build(TransformUnit* pTu, uint8_t compId,
         pWu->m_ctuRsAddr     = 0;
         pWu->m_ctuPosX       = 0;
         pWu->m_ctuPosY       = 0;
-        pWu->m_pDependents   = nullptr;
-        pWu->m_numDependents = 0;
         pWu->m_pInputBuf     = nullptr;
         pWu->m_pOutputBuf    = nullptr;
         pWu->m_pScratch      = nullptr;
         pWu->m_pfnExec       = nullptr;
+        pWu->m_numDependents = 0;
 
         if (pPrev)
         {
-            WorkUnit** oldDeps = pPrev->m_pDependents;
-            int oldNum = pPrev->m_numDependents;
-            WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
-            for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
-            newDeps[oldNum] = pWu;
-            delete[] oldDeps;
-            pPrev->m_pDependents = newDeps;
-            pPrev->m_numDependents = oldNum + 1;
+            CHECK(pPrev->m_numDependents >= WorkUnit::MAX_DEPS, "WorkUnit dependency overflow");
+            pPrev->m_pDependents[pPrev->m_numDependents++] = pWu;
             pWu->m_depCount.fetch_add(1, std::memory_order_acq_rel);
         }
 
@@ -190,15 +170,7 @@ int TUPipelineDAG::estimatePoolSize(CodingUnit* pCu)
     int total = 0;
     for (TransformUnit* pTu = pCu->firstTU; pTu; pTu = pTu->next)
     {
-        int comps = 0;
-        for (int c = 0; c < MAX_NUM_TBLOCKS; c++)
-        {
-            if (c == 0 || pTu->cbf[c])
-            {
-                comps++;
-            }
-        }
-        total += comps * STAGES_PER_COMPONENT;
+        total += MAX_NUM_TBLOCKS * STAGES_PER_COMPONENT;
     }
     return total;
 }
@@ -210,17 +182,44 @@ int TUPipelineDAG::estimatePoolSize(TransformUnit* pTu, uint8_t compId)
     return STAGES_PER_COMPONENT;
 }
 
+void TUPipelineDAG::wireExecutors(WorkUnit* pPool, int numUnits, const TuStageData* pStageData)
+{
+    for (int i = 0; i < numUnits; i++)
+    {
+        WorkUnit* pW = &pPool[i];
+        pW->m_pfnExec = nullptr;
+        if (pStageData)
+        {
+            pW->m_pCtx = (void*)&pStageData[pW->m_compId];
+        }
+        switch (pW->m_eStage)
+        {
+            case Stage::INIT_PRED:
+                pW->m_pfnExec = SchedulerExecutors::execInitPred;
+                break;
+            case Stage::RESIDUAL:
+                pW->m_pfnExec = SchedulerExecutors::execResidual;
+                break;
+            case Stage::FWD_XFORM:
+                pW->m_pfnExec = SchedulerExecutors::execFwdXform;
+                break;
+            case Stage::INV_XFORM:
+                pW->m_pfnExec = SchedulerExecutors::execInvXform;
+                break;
+            case Stage::RECONSTRUCT:
+                pW->m_pfnExec = SchedulerExecutors::execReconstruct;
+                break;
+            default:
+                break;
+        }
+    }
+}
+
 void TUPipelineDAG::xLink(WorkUnit* pPrev, WorkUnit* pNext)
 {
     if (!pPrev || !pNext) return;
-    WorkUnit** oldDeps = pPrev->m_pDependents;
-    int oldNum = pPrev->m_numDependents;
-    WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
-    for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
-    newDeps[oldNum] = pNext;
-    delete[] oldDeps;
-    pPrev->m_pDependents = newDeps;
-    pPrev->m_numDependents = oldNum + 1;
+    CHECK(pPrev->m_numDependents >= WorkUnit::MAX_DEPS, "WorkUnit dependency overflow");
+    pPrev->m_pDependents[pPrev->m_numDependents++] = pNext;
     pNext->m_depCount.fetch_add(1, std::memory_order_acq_rel);
 }
 

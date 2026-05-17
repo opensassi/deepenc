@@ -20,7 +20,8 @@ static int testWorkUnitBasics()
 {
     vvenc::WorkUnit wu;
     if (wu.m_depCount.load() != 0) return 1;
-    if (wu.m_pDependents != nullptr) return 2;
+    for (int i = 0; i < vvenc::WorkUnit::MAX_DEPS; i++)
+        if (wu.m_pDependents[i] != nullptr) return 2;
     if (wu.m_numDependents != 0) return 3;
     if (wu.m_pCtx != nullptr) return 4;
     if (wu.m_pfnExec != nullptr) return 5;
@@ -92,7 +93,7 @@ static int testTUPipelineDAG_3Mock()
     tus[2] = { 4, 4, 0x04, 0, 32 };
 
     int poolSize = vvenc::TUPipelineDAG::estimatePoolSize(tus, 3);
-    int expected = 3 * 7;
+    int expected = 3 * 5;
     if (poolSize < expected) return 1;
 
     std::vector<vvenc::WorkUnit> pool(poolSize);
@@ -109,9 +110,9 @@ static int testTUPipelineDAG_3Mock()
         if (pool[i].m_tuId == 2) seenTuId2++;
         if (pool[i].m_width <= 0 || pool[i].m_height <= 0) return 10 + i;
     }
-    if (seenTuId0 != 7) return 20;
-    if (seenTuId1 != 7) return 21;
-    if (seenTuId2 != 7) return 22;
+    if (seenTuId0 != 5) return 20;
+    if (seenTuId1 != 5) return 21;
+    if (seenTuId2 != 5) return 22;
 
     int depCountSum = 0;
     for (int i = 0; i < numUnits; i++)
@@ -203,17 +204,15 @@ static int testTUSchedulerOrdering()
     int ret = sched.executeWorkUnits(pool.data(), numUnits);
     if (ret != 0) return 1;
 
-    vvenc::Stage expectedOrder[7] = {
+    vvenc::Stage expectedOrder[5] = {
         vvenc::Stage::INIT_PRED,
-        vvenc::Stage::PREDICT,
         vvenc::Stage::RESIDUAL,
         vvenc::Stage::FWD_XFORM,
-        vvenc::Stage::QUANT_FILL,
         vvenc::Stage::INV_XFORM,
         vvenc::Stage::RECONSTRUCT
     };
 
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < 5; i++)
     {
         if (pool[i].m_eStage != expectedOrder[i]) return 10 + i;
     }

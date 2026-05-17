@@ -64,6 +64,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #if ENABLE_SCHEDULER_DISPATCH
 #include "Scheduler/TUPipelineDAG.h"
 #include "Scheduler/SchedulerExecutors.h"
+#include "Scheduler/TuStageData.h"
 #include "Scheduler/RingBuffer.h"
 #include "CommonLib/TypeDef.h"
 #endif
@@ -1274,20 +1275,6 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
     return;
   }
 
-#if ENABLE_SCHEDULER_DISPATCH
-  extern TUScheduler* g_pScheduler;
-  extern bool g_schedulerActive;
-  extern int g_schedulerDispatchCount;
-  if (g_pScheduler && !g_schedulerActive)
-  {
-    g_schedulerActive = true;
-    g_schedulerDispatchCount++;
-    // Fall through to normal path with g_active=true to prevent
-    // recursive dispatch hook re-entry. This runs the exact same
-    // inline TU pipeline code the non-scheduler path uses.
-  }
-#endif
-
   CodingStructure &cs             = *tu.cs;
   const CompArea      &area       = tu.blocks[compID];
   const SPS           &sps        = *cs.sps;
@@ -1306,6 +1293,17 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
   //===== init availability pattern =====
   CHECK( tu.jointCbCr && compID == COMP_Cr, "wrong combination of compID and jointCbCr" );
   bool jointCbCr = tu.jointCbCr && compID == COMP_Cb;
+
+#if ENABLE_SCHEDULER_DISPATCH
+  extern TUScheduler* g_pScheduler;
+  extern bool g_schedulerActive;
+  extern int g_schedulerDispatchCount;
+  if (g_pScheduler && !g_schedulerActive)
+  {
+    g_schedulerActive = true;
+    g_schedulerDispatchCount++;
+  }
+#endif
 
   if ( isLuma(compID) )
   {

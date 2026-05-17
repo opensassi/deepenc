@@ -295,7 +295,10 @@ void TUScheduler::xOnComplete(WorkUnit* pWu, int& completed)
     for (int i = 0; i < pWu->m_numDependents; i++)
     {
         WorkUnit* pDep = pWu->m_pDependents[i];
-        pDep->m_depCount.fetch_sub(1, std::memory_order_acq_rel);
+        if (pDep)
+        {
+            pDep->m_depCount.fetch_sub(1, std::memory_order_acq_rel);
+        }
     }
 
     completed++;
@@ -303,16 +306,13 @@ void TUScheduler::xOnComplete(WorkUnit* pWu, int& completed)
     TUScheduler* sched = g_pSchedulerTraceTarget;
     if (sched && sched->m_pCtuStates)
     {
-        int stageVal = (int)pWu->m_eStage;
         int rsAddr = (int)pWu->m_ctuRsAddr;
-        if (stageVal > (int)WF_NOT_READY && stageVal <= (int)WF_DONE)
+        if (pWu->m_eStage >= Stage::CTU_ENCODE && pWu->m_eStage <= Stage::CCALF_RECON)
         {
-            sched->m_pCtuStates[rsAddr].store((int8_t)stageVal, std::memory_order_release);
+            sched->m_pCtuStates[rsAddr].store(WF_DONE, std::memory_order_release);
         }
     }
 
-    delete[] pWu->m_pDependents;
-    pWu->m_pDependents = nullptr;
     pWu->m_numDependents = 0;
 }
 
@@ -368,11 +368,11 @@ int TUScheduler::submitFrame(Slice& slice, Picture* pic, EncSlice* pEncSlice)
     for (int i = 0; i < numUnits; i++)
     {
         CtuExecCtx* pCtx = new CtuExecCtx();
-        pCtx->pEncSlice = pEncSlice;
-        pCtx->pPic      = pic;
-        pCtx->ctuRsAddr = (int)m_pWorkPool[i].m_ctuRsAddr;
-        pCtx->ctuPosX   = (int)m_pWorkPool[i].m_ctuPosX;
-        pCtx->ctuPosY   = (int)m_pWorkPool[i].m_ctuPosY;
+        pCtx->pEncSlice  = pEncSlice;
+        pCtx->pPic       = pic;
+        pCtx->ctuRsAddr  = (int)m_pWorkPool[i].m_ctuRsAddr;
+        pCtx->ctuPosX    = (int)m_pWorkPool[i].m_ctuPosX;
+        pCtx->ctuPosY    = (int)m_pWorkPool[i].m_ctuPosY;
         m_pWorkPool[i].m_pfnExec = execCtuStage;
         m_pWorkPool[i].m_pCtx    = pCtx;
     }

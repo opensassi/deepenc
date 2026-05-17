@@ -5,19 +5,18 @@
 #include "TUPipelineDAG.h"
 #include "WorkUnit.h"
 
+#include "CommonLib/CommonDef.h"
 #include <cstddef>
 
 namespace vvenc {
 
-static constexpr int STAGES_PER_COMPONENT = 7;
+static constexpr int STAGES_PER_COMPONENT = 5;
 
 static Stage s_componentStages[STAGES_PER_COMPONENT] =
 {
     Stage::INIT_PRED,
-    Stage::PREDICT,
     Stage::RESIDUAL,
     Stage::FWD_XFORM,
-    Stage::QUANT_FILL,
     Stage::INV_XFORM,
     Stage::RECONSTRUCT
 };
@@ -73,44 +72,32 @@ int TUPipelineDAG::build(const MockTU* pTus, int numTus,
                 pWu->m_qp            = tu.qp;
                 pWu->m_mtsIdx        = tu.mtsIdx;
                 pWu->m_bCbf          = false;
-                pWu->m_spatialDepMask = 0;
-                pWu->m_ctuRsAddr     = 0;
-                pWu->m_ctuPosX       = 0;
-                pWu->m_ctuPosY       = 0;
-                pWu->m_pDependents   = nullptr;
-                pWu->m_numDependents = 0;
-                pWu->m_pInputBuf     = nullptr;
-                pWu->m_pOutputBuf    = nullptr;
-                pWu->m_pScratch      = nullptr;
-                pWu->m_pfnExec       = nullptr;
+                pWu->m_spatialDepMask  = 0;
+                pWu->m_ctuRsAddr      = 0;
+                pWu->m_ctuPosX        = 0;
+                pWu->m_ctuPosY        = 0;
+                pWu->m_numDependents  = 0;
+                pWu->m_pInputBuf      = nullptr;
+                pWu->m_pOutputBuf     = nullptr;
+                pWu->m_pScratch       = nullptr;
+                pWu->m_pfnExec        = nullptr;
 
                 if (pPrev)
                 {
-                    WorkUnit** oldDeps = pPrev->m_pDependents;
-                    int oldNum = pPrev->m_numDependents;
-                    WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
-                    for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
-                    newDeps[oldNum] = pWu;
-                    delete[] oldDeps;
-                    pPrev->m_pDependents = newDeps;
-                    pPrev->m_numDependents = oldNum + 1;
+                    CHECK(pPrev->m_numDependents >= WorkUnit::MAX_DEPS, "WorkUnit dependency overflow");
+                    pPrev->m_pDependents[pPrev->m_numDependents++] = pWu;
                     pWu->m_depCount.fetch_add(1, std::memory_order_acq_rel);
-                }
-
-                if (s == 0 && pLastInTu)
-                {
-                    pWu->m_depCount.fetch_add(1, std::memory_order_acq_rel);
-                    WorkUnit** oldDeps = pLastInTu->m_pDependents;
-                    int oldNum = pLastInTu->m_numDependents;
-                    WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
-                    for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
-                    newDeps[oldNum] = pWu;
-                    delete[] oldDeps;
-                    pLastInTu->m_pDependents = newDeps;
-                    pLastInTu->m_numDependents = oldNum + 1;
                 }
 
                 pPrev = pWu;
+            }
+
+            if (pLastInTu)
+            {
+                WorkUnit* pFirst = pNext - STAGES_PER_COMPONENT;
+                CHECK(pLastInTu->m_numDependents >= WorkUnit::MAX_DEPS, "WorkUnit dependency overflow");
+                pLastInTu->m_pDependents[pLastInTu->m_numDependents++] = pFirst;
+                pFirst->m_depCount.fetch_add(1, std::memory_order_acq_rel);
             }
 
             pLastInTu = pPrev;

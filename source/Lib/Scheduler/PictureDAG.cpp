@@ -22,8 +22,10 @@ bool execCtuStage(WorkUnit* pWu, void* pScratch)
     if (!pWu || !pWu->m_pCtx) return false;
     CtuExecCtx* ctx = (CtuExecCtx*)pWu->m_pCtx;
     if (!ctx->pEncSlice || !ctx->pPic) return false;
-    return ctx->pEncSlice->xProcessCtuStage(ctx->pPic,
+
+    ctx->pEncSlice->xProcessCtuStage(ctx->pPic,
         ctx->ctuRsAddr, ctx->ctuPosX, ctx->ctuPosY, pWu->m_eStage);
+    return true;
 }
 #endif
 
@@ -36,17 +38,7 @@ struct CtuStageDef
 
 static const CtuStageDef s_ctuStages[] =
 {
-    { Stage::CTU_ENCODE,   SPATIAL_LEFT | SPATIAL_TOP | SPATIAL_TOP_RIGHT, WF_RECON_WRITE },
-    { Stage::RECON_WRITE,  0,                                             WF_NOT_READY    },
-    { Stage::LF_VER,       SPATIAL_RIGHT | SPATIAL_BOT_RIGHT,             WF_RECON_WRITE  },
-    { Stage::LF_HOR,       SPATIAL_TOP,                                    WF_LF_VER       },
-    { Stage::SAO_FILTER,   SPATIAL_TOP,                                    WF_LF_HOR       },
-    { Stage::ALF_STATS,    0,                                              WF_NOT_READY    },
-    { Stage::ALF_DERIVE,   0,                                              WF_NOT_READY    },
-    { Stage::ALF_RECON,    0,                                              WF_NOT_READY    },
-    { Stage::CCALF_STATS,  0,                                              WF_NOT_READY    },
-    { Stage::CCALF_DERIVE, 0,                                              WF_NOT_READY    },
-    { Stage::CCALF_RECON,  0,                                              WF_NOT_READY    },
+    { Stage::CTU_ENCODE,   SPATIAL_LEFT | SPATIAL_TOP | SPATIAL_TOP_RIGHT, WF_DONE         },
 };
 
 static const int NUM_CTU_STAGES = sizeof(s_ctuStages) / sizeof(s_ctuStages[0]);
@@ -128,14 +120,13 @@ int PictureDAG::xAddCtuEncode(uint32_t rsAddr, uint16_t posX, uint16_t posY,
         pWu->m_ctuRsAddr     = rsAddr;
         pWu->m_ctuPosX       = posX;
         pWu->m_ctuPosY       = posY;
-        pWu->m_spatialDepMask = s_ctuStages[s].spatialDepMask;
-        pWu->m_pDependents   = nullptr;
-        pWu->m_numDependents = 0;
-        pWu->m_pInputBuf     = nullptr;
-        pWu->m_pOutputBuf    = nullptr;
-        pWu->m_pScratch      = nullptr;
+        pWu->m_spatialDepMask  = s_ctuStages[s].spatialDepMask;
+        pWu->m_numDependents   = 0;
+        pWu->m_pInputBuf       = nullptr;
+        pWu->m_pOutputBuf      = nullptr;
+        pWu->m_pScratch        = nullptr;
 #ifdef VVENC_SOURCE
-        pWu->m_pfnExec       = execCtuStage;
+        pWu->m_pfnExec         = execCtuStage;
 #endif
 
         if (pPrev)
@@ -151,20 +142,8 @@ int PictureDAG::xAddCtuEncode(uint32_t rsAddr, uint16_t posX, uint16_t posY,
 
 void PictureDAG::xLinkStages(WorkUnit* pPrev, WorkUnit* pNext)
 {
-    WorkUnit** oldDeps = pPrev->m_pDependents;
-    int oldNum = pPrev->m_numDependents;
-
-    WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
-    for (int i = 0; i < oldNum; i++)
-    {
-        newDeps[i] = oldDeps[i];
-    }
-    newDeps[oldNum] = pNext;
-
-    delete[] oldDeps;
-    pPrev->m_pDependents = newDeps;
-    pPrev->m_numDependents = oldNum + 1;
-
+    CHECK(pPrev->m_numDependents >= WorkUnit::MAX_DEPS, "PictureDAG dependency overflow");
+    pPrev->m_pDependents[pPrev->m_numDependents++] = pNext;
     pNext->m_depCount.fetch_add(1, std::memory_order_acq_rel);
 }
 

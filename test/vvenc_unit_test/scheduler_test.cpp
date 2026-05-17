@@ -2,11 +2,11 @@
     \brief    Unit tests for scheduler module classes (Phase 1)
  */
 
-#include "source/Lib/Scheduler/WorkUnit.h"
-#include "source/Lib/Scheduler/RingBuffer.h"
-#include "source/Lib/Scheduler/TUPipelineDAG.h"
-#include "source/Lib/Scheduler/TUScheduler.h"
-#include "source/Lib/Scheduler/SchedulerTrace.h"
+#include "Scheduler/WorkUnit.h"
+#include "Scheduler/RingBuffer.h"
+#include "Scheduler/TUPipelineDAG.h"
+#include "Scheduler/TUScheduler.h"
+#include "Scheduler/SchedulerTrace.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -56,7 +56,8 @@ static int testWorkUnitDefaults()
     if (wu.m_width != 0) return 1;
     if (wu.m_height != 0) return 1;
     if (wu.m_depCount.load() != 0) return 1;
-    if (wu.m_pDependents != nullptr) return 1;
+    for (int i = 0; i < WorkUnit::MAX_DEPS; i++)
+        if (wu.m_pDependents[i] != nullptr) return 1;
     if (wu.m_numDependents != 0) return 1;
     if (wu.m_pInputBuf != nullptr) return 1;
     if (wu.m_pOutputBuf != nullptr) return 1;
@@ -173,13 +174,13 @@ static int testDagSingleTu()
 {
     MockTU tu = { 8, 8, 1, 0, 22 };
     int poolSize = TUPipelineDAG::estimatePoolSize(&tu, 1);
-    if (poolSize != 7) return 1;
+    if (poolSize != 5) return 1;
 
     WorkUnit* pool = new WorkUnit[poolSize];
     int numUnits = 0;
     int ret = TUPipelineDAG::build(&tu, 1, pool, poolSize, numUnits);
     if (ret != 0) return 1;
-    if (numUnits != 7) return 1;
+    if (numUnits != 5) return 1;
 
     delete[] pool;
     return 0;
@@ -189,13 +190,13 @@ static int testDagMultiTu()
 {
     MockTU tus[2] = { { 8, 8, 1, 0, 22 }, { 4, 4, 1, 0, 27 } };
     int poolSize = TUPipelineDAG::estimatePoolSize(tus, 2);
-    if (poolSize != 14) return 1;
+    if (poolSize != 10) return 1;
 
     WorkUnit* pool = new WorkUnit[poolSize];
     int numUnits = 0;
     int ret = TUPipelineDAG::build(tus, 2, pool, poolSize, numUnits);
     if (ret != 0) return 1;
-    if (numUnits != 14) return 1;
+    if (numUnits != 10) return 1;
 
     delete[] pool;
     return 0;
@@ -215,13 +216,13 @@ static int testDagMultiComponent()
 {
     MockTU tu = { 8, 8, 7, 0, 22 };
     int poolSize = TUPipelineDAG::estimatePoolSize(&tu, 1);
-    if (poolSize != 21) return 1;
+    if (poolSize != 15) return 1;
 
     WorkUnit* pool = new WorkUnit[poolSize];
     int numUnits = 0;
     int ret = TUPipelineDAG::build(&tu, 1, pool, poolSize, numUnits);
     if (ret != 0) return 1;
-    if (numUnits != 21) return 1;
+    if (numUnits != 15) return 1;
 
     delete[] pool;
     return 0;

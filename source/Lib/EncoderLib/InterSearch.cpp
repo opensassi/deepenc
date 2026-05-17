@@ -4317,7 +4317,6 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
   {
     g_schedulerActive = true;
     g_schedulerDispatchCount++;
-    // Fall through to normal path with g_active=true to prevent recursive dispatch.
   }
 #endif
   xEstimateInterResidualQT(cs, partitioner, &zeroDistortion );
@@ -4434,13 +4433,6 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
   cs.cost     = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);
 
   CHECK(cs.tus.size() == 0, "No TUs present");
-#if ENABLE_SCHEDULER_DISPATCH
-  extern bool g_schedulerActive;
-  if (g_schedulerActive)
-  {
-    g_schedulerActive = false;
-  }
-#endif
 }
 
 uint64_t InterSearch::xGetSymbolFracBitsInter(CodingStructure &cs, Partitioner &partitioner)

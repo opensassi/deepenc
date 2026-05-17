@@ -35,7 +35,7 @@ struct TuStageData
     // ── Stage 3 (FWD_XFORM): m_absSum, m_coeffs (via transformNxN)            ──
     // ── Stage 4 (INV_XFORM): m_resiBuf = invTransform(m_coeffs)               ──
     // ── Stage 5 (RECON):     m_recoBuf = m_predBuf + m_resiBuf + distortion   ──
-    PelBuf           m_orgBuf;
+    CPelBuf          m_orgBuf;
     CPelBuf          m_orgBufC;
     PelBuf           m_predBuf;
     PelBuf           m_resiBuf;

@@ -11,6 +11,8 @@ namespace vvenc {
 struct WorkUnit;
 struct CodingUnit;
 class TransformUnit;
+struct TuStageData;
+class SchedulerExecutors;
 
 struct MockTU
 {
@@ -34,6 +36,9 @@ public:
     static int estimatePoolSize(const MockTU* pTus, int numTus);
     static int estimatePoolSize(CodingUnit* pCu);
     static int estimatePoolSize(TransformUnit* pTu, uint8_t compId);
+
+    static void wireExecutors(WorkUnit* pPool, int numUnits,
+                              const TuStageData* pStageData = nullptr);
 
     virtual ~TUPipelineDAG();
 

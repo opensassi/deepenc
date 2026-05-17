@@ -81,7 +81,9 @@ struct WorkUnit
 
     std::atomic<int> m_depCount{ 0 };
 
-    WorkUnit**      m_pDependents    = nullptr;
+    static constexpr int MAX_DEPS = 4;
+
+    WorkUnit*       m_pDependents[MAX_DEPS] = {};
 
     int             m_numDependents  = 0;
 
