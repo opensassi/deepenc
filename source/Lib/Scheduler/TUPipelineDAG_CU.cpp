@@ -40,10 +40,12 @@ int TUPipelineDAG::build(CodingUnit* pCu,
     }
 
     WorkUnit* pNext = pPool;
+    uint32_t tuIdx = 0;
 
     for (TransformUnit* pTu = pCu->firstTU; pTu; pTu = pTu->next)
     {
         WorkUnit* pLastInTu = nullptr;
+        uint32_t thisTuId = tuIdx++;
 
         for (int c = 0; c < MAX_NUM_TBLOCKS; c++)
         {
@@ -66,7 +68,7 @@ int TUPipelineDAG::build(CodingUnit* pCu,
                 numUnits++;
 
                 pWu->m_eStage        = s_componentStages[s];
-                pWu->m_tuId          = pTu->idx;
+                pWu->m_tuId          = thisTuId;
                 pWu->m_compId        = (uint8_t)compId;
                 pWu->m_width         = pTu->blocks[c].width;
                 pWu->m_height        = pTu->blocks[c].height;
@@ -120,6 +122,67 @@ int TUPipelineDAG::build(CodingUnit* pCu,
     return 0;
 }
 
+int TUPipelineDAG::build(TransformUnit* pTu, uint8_t compId,
+                          WorkUnit* pPool, int poolSize, int& numUnits)
+{
+    numUnits = 0;
+
+    if (!pTu)
+    {
+        return -2;
+    }
+
+    if (STAGES_PER_COMPONENT > poolSize)
+    {
+        return -1;
+    }
+
+    WorkUnit* pNext = pPool;
+    WorkUnit* pPrev = nullptr;
+
+    for (int s = 0; s < STAGES_PER_COMPONENT; s++)
+    {
+        WorkUnit* pWu = pNext++;
+        numUnits++;
+
+        pWu->m_eStage        = s_componentStages[s];
+        pWu->m_tuId          = (uint32_t)pTu->idx;
+        pWu->m_compId        = compId;
+        pWu->m_width         = pTu->blocks[compId].width;
+        pWu->m_height        = pTu->blocks[compId].height;
+        pWu->m_qp            = (int8_t)pTu->cu->qp;
+        pWu->m_mtsIdx        = (uint8_t)pTu->mtsIdx[compId];
+        pWu->m_bCbf          = (compId == 0 || pTu->cbf[compId]);
+        pWu->m_spatialDepMask = 0;
+        pWu->m_ctuRsAddr     = 0;
+        pWu->m_ctuPosX       = 0;
+        pWu->m_ctuPosY       = 0;
+        pWu->m_pDependents   = nullptr;
+        pWu->m_numDependents = 0;
+        pWu->m_pInputBuf     = nullptr;
+        pWu->m_pOutputBuf    = nullptr;
+        pWu->m_pScratch      = nullptr;
+        pWu->m_pfnExec       = nullptr;
+
+        if (pPrev)
+        {
+            WorkUnit** oldDeps = pPrev->m_pDependents;
+            int oldNum = pPrev->m_numDependents;
+            WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
+            for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
+            newDeps[oldNum] = pWu;
+            delete[] oldDeps;
+            pPrev->m_pDependents = newDeps;
+            pPrev->m_numDependents = oldNum + 1;
+            pWu->m_depCount.fetch_add(1, std::memory_order_acq_rel);
+        }
+
+        pPrev = pWu;
+    }
+
+    return 0;
+}
+
 int TUPipelineDAG::estimatePoolSize(CodingUnit* pCu)
 {
     if (!pCu) return 0;
@@ -138,6 +201,27 @@ int TUPipelineDAG::estimatePoolSize(CodingUnit* pCu)
         total += comps * STAGES_PER_COMPONENT;
     }
     return total;
+}
+
+int TUPipelineDAG::estimatePoolSize(TransformUnit* pTu, uint8_t compId)
+{
+    (void)pTu;
+    (void)compId;
+    return STAGES_PER_COMPONENT;
+}
+
+void TUPipelineDAG::xLink(WorkUnit* pPrev, WorkUnit* pNext)
+{
+    if (!pPrev || !pNext) return;
+    WorkUnit** oldDeps = pPrev->m_pDependents;
+    int oldNum = pPrev->m_numDependents;
+    WorkUnit** newDeps = new WorkUnit*[oldNum + 1];
+    for (int i = 0; i < oldNum; i++) newDeps[i] = oldDeps[i];
+    newDeps[oldNum] = pNext;
+    delete[] oldDeps;
+    pPrev->m_pDependents = newDeps;
+    pPrev->m_numDependents = oldNum + 1;
+    pNext->m_depCount.fetch_add(1, std::memory_order_acq_rel);
 }
 
 }

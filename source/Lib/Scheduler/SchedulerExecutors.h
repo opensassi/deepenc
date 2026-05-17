@@ -1,5 +1,5 @@
 /** \file     SchedulerExecutors.h
-    \brief    Executor functions wrapping real encoder pipeline stages
+    \brief    Per-stage executor functions for 5-stage TU pipeline
  */
 
 #pragma once
@@ -9,24 +9,12 @@
 namespace vvenc {
 
 struct WorkUnit;
+struct TuStageData;
 class IntraSearch;
 class InterSearch;
 class TempCtx;
 class CodingStructure;
 class Partitioner;
-
-struct IntraTuExecCtx
-{
-    IntraSearch*     pSearch;
-    void*            pTu;
-    uint8_t          compId;
-    bool             checkCrossCPrediction;
-    uint64_t*        pDist;
-    uint32_t*        pNumSig;
-    void*            pPred;
-    bool             loadTr;
-    TempCtx*         pCtxStart;
-};
 
 struct InterTuExecCtx
 {
@@ -40,9 +28,14 @@ struct InterTuExecCtx
 class SchedulerExecutors
 {
 public:
-    static bool execIntraTu(WorkUnit* pWu, void* pScratch);
-    static int  setupIntraTu(IntraSearch* pSearch,
-                             WorkUnit* pPool, int numUnits);
+    // ── Per-stage intra executors ──
+    static bool execInitPred   (WorkUnit* pWu, void* pScratch);
+    static bool execResidual   (WorkUnit* pWu, void* pScratch);
+    static bool execFwdXform   (WorkUnit* pWu, void* pScratch);
+    static bool execInvXform   (WorkUnit* pWu, void* pScratch);
+    static bool execReconstruct(WorkUnit* pWu, void* pScratch);
+
+    // ── Inter executor ──
     static bool execInterTu(WorkUnit* pWu, void* pScratch);
 };
 

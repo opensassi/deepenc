@@ -4317,22 +4317,8 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
   {
     g_schedulerActive = true;
     g_schedulerDispatchCount++;
-    WorkUnit wu = {};
-    wu.m_pfnExec = SchedulerExecutors::execInterTu;
-    InterTuExecCtx* pCtx = new InterTuExecCtx();
-    memset(pCtx, 0, sizeof(InterTuExecCtx));
-    pCtx->pSearch     = this;
-    pCtx->pCs         = &cs;
-    pCtx->pPartitioner = &partitioner;
-    pCtx->pZeroDist   = &zeroDistortion;
-    pCtx->pCtxStart   = new TempCtx(m_CtxCache, m_CABACEstimator->getCtx());
-    wu.m_pCtx         = pCtx;
-    g_pScheduler->executeWorkUnits(&wu, 1);
-    delete (TempCtx*)pCtx->pCtxStart;
-    delete pCtx;
-    g_schedulerActive = false;
+    // Fall through to normal path with g_active=true to prevent recursive dispatch.
   }
-  else
 #endif
   xEstimateInterResidualQT(cs, partitioner, &zeroDistortion );
   TransformUnit& firstTU = *cs.getTU( partitioner.chType );
@@ -4448,6 +4434,13 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
   cs.cost     = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);
 
   CHECK(cs.tus.size() == 0, "No TUs present");
+#if ENABLE_SCHEDULER_DISPATCH
+  extern bool g_schedulerActive;
+  if (g_schedulerActive)
+  {
+    g_schedulerActive = false;
+  }
+#endif
 }
 
 uint64_t InterSearch::xGetSymbolFracBitsInter(CodingStructure &cs, Partitioner &partitioner)

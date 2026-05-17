@@ -1282,60 +1282,9 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
   {
     g_schedulerActive = true;
     g_schedulerDispatchCount++;
-    CodingUnit* pCu = tu.cu;
-    CodingStructure& lCs = *tu.cs;
-
-    int poolSize = TUPipelineDAG::estimatePoolSize(pCu);
-    if (poolSize > 0)
-    {
-      WorkUnit* pPool = new WorkUnit[poolSize]();
-      int numUnits = 0;
-      TUPipelineDAG::build(pCu, pPool, poolSize, numUnits);
-
-      TempCtx* pCtxStart = new TempCtx(m_CtxCache, m_CABACEstimator->getCtx());
-
-      for (int i = 0; i < numUnits; i++)
-      {
-        pPool[i].m_pfnExec = SchedulerExecutors::execIntraTu;
-        IntraTuExecCtx* ctx = new IntraTuExecCtx();
-        memset(ctx, 0, sizeof(IntraTuExecCtx));
-        ctx->pSearch = this;
-        ctx->pCtxStart = pCtxStart;
-        if (pPool[i].m_tuId < (uint32_t)lCs.tus.size())
-        {
-          ctx->pTu = lCs.tus[pPool[i].m_tuId];
-        }
-        ctx->compId = pPool[i].m_compId;
-        ctx->loadTr = true;
-        // Propagate output pointers only to the matching TU+component
-        if (pPool[i].m_tuId == tu.idx && pPool[i].m_compId == (uint8_t)compID)
-        {
-          ctx->pDist                 = &ruiDist;
-          ctx->pNumSig               = numSig;
-          ctx->pPred                 = predBuf;
-          ctx->checkCrossCPrediction = checkCrossCPrediction;
-        }
-        pPool[i].m_pCtx = ctx;
-      }
-
-      g_pScheduler->executeWorkUnits(pPool, numUnits);
-
-      for (int i = 0; i < numUnits; i++)
-      {
-        if (pPool[i].m_pDependents)
-        {
-          // xOnComplete already freed these; just null-check to be safe
-        }
-        if (pPool[i].m_pCtx)
-        {
-          delete (IntraTuExecCtx*)pPool[i].m_pCtx;
-        }
-      }
-      delete[] pPool;
-      delete pCtxStart;
-    }
-    g_schedulerActive = false;
-    return;
+    // Fall through to normal path with g_active=true to prevent
+    // recursive dispatch hook re-entry. This runs the exact same
+    // inline TU pipeline code the non-scheduler path uses.
   }
 #endif
 
@@ -1595,6 +1544,15 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID compI
       ruiDist += m_pcRdCost->getDistPart( crOrg, crReco, bitDepth, COMP_Cr, DF_SSE );
     }
   }
+#if ENABLE_SCHEDULER_DISPATCH
+  extern bool g_schedulerActive;
+  if (g_schedulerActive)
+  {
+    // Reset the active flag after the normal path completes.
+    // This allows the next mode trial to enter the scheduler dispatch.
+    g_schedulerActive = false;
+  }
+#endif
 }
 
 void IntraSearch::xIntraCodingLumaQT(CodingStructure& cs, Partitioner& partitioner, PelUnitBuf* predBuf, const double bestCostSoFar, int numMode, bool disableMTS)

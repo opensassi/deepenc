@@ -10,6 +10,7 @@ namespace vvenc {
 
 struct WorkUnit;
 struct CodingUnit;
+class TransformUnit;
 
 struct MockTU
 {
@@ -27,8 +28,12 @@ public:
                      WorkUnit* pPool, int poolSize, int& numUnits);
     static int build(CodingUnit* pCu,
                      WorkUnit* pPool, int poolSize, int& numUnits);
+    /** \brief Build work units for a single TU + component (7 stages). */
+    static int build(TransformUnit* pTu, uint8_t compId,
+                     WorkUnit* pPool, int poolSize, int& numUnits);
     static int estimatePoolSize(const MockTU* pTus, int numTus);
     static int estimatePoolSize(CodingUnit* pCu);
+    static int estimatePoolSize(TransformUnit* pTu, uint8_t compId);
 
     virtual ~TUPipelineDAG();
 
