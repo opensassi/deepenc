@@ -3,6 +3,14 @@
   "skills": {
     "opensassi": "allow"
   },
+  "agent": {
+    "plan": {
+      "permission": {
+        "edit": "deny",
+        "bash": { "npx @opensassi/opencode *": "allow" }
+      }
+    }
+  },
   "mcp": {
     "playwright": {
       "type": "local",
