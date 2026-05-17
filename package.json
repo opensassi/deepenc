@@ -11,6 +11,7 @@
     "verify-animation": "node scripts/verify-artifact.js"
   },
   "devDependencies": {
+    "@opensassi/opencode": "^0.2.0",
     "playwright": "^1.60.0",
     "sharp": "^0.34.5"
   }
